@@ -1,0 +1,435 @@
+<html>
+<head>
+<title>LegiScan API Client README</title>
+<!-- link type="text/css" rel="stylesheet" href="markdown.css"/ -->
+<style>
+a,h1:hover a.anchor,h2:hover a.anchor,h3:hover a.anchor,h4:hover a.anchor,h5:hover a.anchor,h6:hover a.anchor{text-decoration:none}a.anchor,ol,ul{padding-left:30px}body,table tr{background-color:#fff}dl dt,table tr th{font-weight:700}code,table tr:nth-child(2n),tt{background-color:#f8f8f8}body{font-family:Helvetica,arial,sans-serif;font-size:14px;line-height:1.6;padding:30px;color:#333}body>:first-child{margin-top:0!important}body>:last-child{margin-bottom:0!important}blockquote>:last-child,dl dd>:last-child,dl dt>:last-child,ol :last-child,table tr td :last-child,table tr th :last-child,ul :last-child{margin-bottom:0}a{color:#4183C4}a.absent{color:#c00}h1,h2{color:#000}blockquote,h6{color:#777}a.anchor{display:block;margin-left:-30px;cursor:pointer;position:absolute;top:0;left:0;bottom:0}dl,dl dt,dl dt:first-child,hr,table,table tr{padding:0}h1,h2,h3,h4,h5,h6{margin:20px 0 10px;padding:0;font-weight:700;-webkit-font-smoothing:antialiased;cursor:text;position:relative}h1:first-child,h1:first-child+h2,h2:first-child,h3:first-child,h4:first-child,h5:first-child,h6:first-child{margin-top:0;padding-top:0}h1 code,h1 tt,h2 code,h2 tt,h3 code,h3 tt,h4 code,h4 tt,h5 code,h5 tt,h6 code,h6 tt{font-size:inherit}h1{font-size:28px}h2{font-size:24px;border-bottom:1px solid #ccc}h3{font-size:18px}h4{font-size:16px}dl dt,h5,h6{font-size:14px}blockquote,dl,li,ol,p,pre,table,ul{margin:15px 0}hr{border:0;color:#ccc;height:4px}a:first-child h1,a:first-child h2,a:first-child h3,a:first-child h4,a:first-child h5,a:first-child h6,body>h1:first-child,body>h1:first-child+h2,body>h2:first-child,body>h3:first-child,body>h4:first-child,body>h5:first-child,body>h6:first-child{margin-top:0;padding-top:0}table tr td,table tr th{border:1px solid #ccc;text-align:left;margin:0;padding:6px 13px}h1 p,h2 p,h3 p,h4 p,h5 p,h6 p{margin-top:0}li p.first{display:inline-block}ol :first-child,ul :first-child{margin-top:0}dl dt{font-style:italic;margin:15px 0 5px}blockquote>:first-child,dl dd>:first-child,dl dt>:first-child,table tr td :first-child,table tr th :first-child{margin-top:0}dl dd{margin:0 0 15px;padding:0 15px}blockquote{border-left:4px solid #ddd;padding:0 15px}table tr{border-top:1px solid #ccc;margin:0}img{max-width:100%}span.frame{display:block;overflow:hidden}span.frame>span{border:1px solid #ddd;display:block;float:left;overflow:hidden;margin:13px 0 0;padding:7px;width:auto}span.frame span img{display:block;float:left}span.frame span span{clear:both;color:#333;display:block;padding:5px 0 0}span.align-center{display:block;overflow:hidden;clear:both}span.align-center>span{display:block;overflow:hidden;margin:13px auto 0;text-align:center}span.align-center span img{margin:0 auto;text-align:center}span.align-right{display:block;overflow:hidden;clear:both}span.align-right>span{display:block;overflow:hidden;margin:13px 0 0;text-align:right}span.align-right span img{margin:0;text-align:right}span.float-left{display:block;margin-right:13px;overflow:hidden;float:left}span.float-left span{margin:13px 0 0}span.float-right{display:block;margin-left:13px;overflow:hidden;float:right}span.float-right>span{display:block;overflow:hidden;margin:13px auto 0;text-align:right}code,tt{margin:0 2px;padding:0 5px;white-space:nowrap;border:1px solid #eaeaea;border-radius:3px}pre code{margin:0;padding:0;white-space:pre;background:0 0}.highlight pre,pre{background-color:#f8f8f8;border:1px solid #ccc;font-size:13px;line-height:19px;overflow:auto;padding:6px 10px;border-radius:3px}pre code,pre tt{background-color:transparent;border:none}
+</style>
+</head>
+<body>
+<h1>LegiScan API Client</h1>
+
+<h2>About this Documentation</h2>
+
+<p>This is the installation documentation for installing the LegiScan API Client
+on Linux. This guide is written for installation from source on a Debian
+platform and any Linux variant should work with little modifications. There
+is nothing intrinsically Linux specific to the code, so Windows based servers
+with access to PHP should work with as well, though not officially tested with MSSQL.</p>
+
+<h3>Tested On</h3>
+
+<ul>
+<li>PHP 5.6</li>
+<li>MariaDB 10.1 w/Percona-XtraDB</li>
+<li>Debian 8 (Jessie)</li>
+<li>PHP 7.1</li>
+<li>PostgreSQL 9.5</li>
+<li>Ubuntu LTS 16.04 (Xenial)</li>
+</ul>
+
+<h3>Requirements</h3>
+
+<ul>
+<li>PHP 5.4 or later</li>
+<li>MySQL 5.6 or PostgreSQL compatible database</li>
+<li>A large filesystem, if storing documents locally</li>
+</ul>
+
+<h3>Further Reading</h3>
+
+<blockquote>
+  <p>API Client source documentation is available at: <a href="https://api.legiscan.com/docs/index.html">LegiScan API Client Documentation</a></p>
+
+<p>Additional documentation and data dictionary is available at: <a href="https://legiscan.com/gaits/documentation/legiscan">LegiScan API Manual</a></p>
+
+<p>For information about support options and upgrading to Push API please email us at <a href="mailto:info@legiscan.com?subject=LegiScan%20API%20Inquiry">info@legiscan.com</a>, or call <a href="tel:8006182750,,401">800-618-2750 x401</a></p>
+</blockquote>
+
+<h2>Files Included</h2>
+
+<p>The following files are included in the LegiScan API archive:</p>
+
+<ul>
+<li>LegiScan.php - LegiScan core classes</li>
+<li>config.dist.php - INI style configuration file settings &amp; options</li>
+<li>legiscand.php - Pull Daemon script to keep local database updated</li>
+<li>legiscan-bulk.php - Bulk import utility for JSON dataset archives</li>
+<li>legiscan-cli.php - Command line tool to generate API requests</li>
+<li>legiscan-push.php - Listener endpoint for Push API</li>
+<li>legiscan-ui.php - Simple web page demo interface to LegiScan API</li>
+<li>common.php - utility and helper functions</li>
+<li>schema-mysql.sql - MySQL database schema with static table data</li>
+<li>schema-pgsql.sql - PostgreSQL database schema with static table data</li>
+<li>upgrade.php - A script to apply database changes when upgrading</li>
+</ul>
+
+<h2>Installation</h2>
+
+<p>In this example we will install the package under <code>/opt</code>, this could
+also be your root web server folder such as <code>/var/www</code>. </p>
+
+<p>Unpack the archive that you downloaded from <a href="https://legiscan.com/">legiscan.com</a>.
+This will create a new directory <code>legiscan</code> that has all the files necessary to 
+interface with the LegiScan API.</p>
+
+<pre><code>cd /opt
+wget https://api.legiscan.com/dl/legiscan-current.tar.gz
+tar zxvf legiscan-current.tar.gz
+cd legiscan
+</code></pre>
+
+<p>You will need to have a valid API key, if you don't already have one you
+can get one for free at <a href="https://legiscan.com/legiscan/">LegiScan API Registration</a></p>
+
+<h2>Upgrade</h2>
+
+<p>When upgrading from a previous version unpack the archive over the existing
+installation, verify if there are any config.php updates that need to be applied,
+then run the <code>upgrade.php</code> script to make any schema and data modifications.</p>
+
+<pre><code>php upgrade.php
+</code></pre>
+
+<h2>Database MySQL</h2>
+
+<p>Create the <code>legiscan_api</code> database, add a user <code>legiscan_api</code> with password
+<code>&lt;your password&gt;</code>, grant rights on the database to the new user and reload
+privleges.</p>
+
+<pre><code>mysql -u root -p
+CREATE DATABASE legiscan_api DEFAULT CHARACTER SET utf8;
+GRANT USAGE ON *.* TO 'legiscan_api'@'localhost' IDENTIFIED BY '&lt;your password&gt;';
+GRANT CREATE, ALTER, SELECT, INSERT, UPDATE, DELETE ON `legiscan_api`.* TO 'legiscan_api'@'localhost';
+FLUSH PRIVILEGES;
+exit
+</code></pre>
+
+<p>Next load the schema and static lookup tables.</p>
+
+<pre><code>mysql -D legiscan_api -u root -p &lt; schema-mysql.sql
+</code></pre>
+
+<h2>Database PostgreSQL</h2>
+
+<p>Create the <code>legiscan_api</code> user with password <code>&lt;your password&gt;</code> since in
+PostgreSQL the assumption is a database will exist with the same name as
+the role being used to login.</p>
+
+<pre><code>sudo -u postgres createuser -S -D -R -P legiscan_api
+Enter password for new role: &lt;your password&gt;
+Enter it again: &lt;your password&gt;
+</code></pre>
+
+<p>Next create the actual database <code>legiscan_api</code> owned by <code>legiscan_api</code>.</p>
+
+<pre><code>sudo -u postgres createdb -E UTF8 -O legiscan_api legiscan_api
+</code></pre>
+
+<p>Finally load the schema and static lookup tables.</p>
+
+<pre><code>sudo -u postgres psql -U legiscan_api -f schema-pgsql.sql
+</code></pre>
+
+<h2>Database Diagram</h2>
+
+<p>See: <a href="https://api.legiscan.com/dl/ERD.png">Entity Relationship Diagram</a> for
+a schema overview and table relations.</p>
+
+<h2>Configuration</h2>
+
+<p>Copy the sample configuration file to its proper location.</p>
+
+<pre><code>cp config.dist.php config.php
+</code></pre>
+
+<p>Using your favorite text editor, open the <code>config.php</code> file and follow the
+instructions included in the file for setting up configuration options.</p>
+
+<pre><code>vim config.php
+</code></pre>
+
+<p>Of particular note enter your <code>api_key</code> and change <code>dsn</code>, <code>db_pass</code> to the
+value set in the above step.</p>
+
+<p>If setting up for pull, <code>update_type</code> and the <code>states</code> list and/or <code>searches</code>
+lists should be populated. You may also want to tune the global <code>relevance</code>
+cutoff for searches.</p>
+
+<p>Local document storage is disabled by default, change <code>want_bill_text</code>,
+<code>want_amendment</code>, <code>want_supplement</code> if needed.</p>
+
+<h2>Directories and Permissions</h2>
+
+<p>In general the LegiScan Client expects to be ran under a single non-privledged
+account, often <code>www-data</code> or similar account when running from a web server, or
+perhaps a custom user/group. Whatever the case, mixing users later on will result
+in permission conflicts within cache.</p>
+
+<p>There are several directories specified in <code>config.php</code> that need to be writable
+by the user running the scripts. By default these are located within the <code>legiscan</code>
+directory, if you select alternate locations please ensure proper permissions
+and access.</p>
+
+<pre><code>chown -R www-data cache/api cache/doc log signal
+</code></pre>
+
+<p><strong>NOTE</strong>: Be consistent when running from command line e.g., <code>sudo -u www-data php legiscan-cli.php</code>.</p>
+
+<p><strong>NOTE</strong>: If <code>middleware_signal</code> is not used or is table based, the <code>signal</code> directory can be ignored.</p>
+
+<h2>Bulk Import</h2>
+
+<p>Starting here is <strong>STRONGLY</strong> encouraged as a few hundred files are the equivalent
+of approximately <strong>2 million</strong> individual API calls.</p>
+
+<p>Using the getDataset API hooks, a manually downloaded copy of a weekly
+<a href="https://legiscan.com/datasets">Public Dataset</a>, or a custom subscriber onboarding
+snapshot, this script will extract the contents of the archives and import/update
+data as needed.</p>
+
+<p>When using getDataset, the script can operate in two modes, <code>--scan</code> and <code>--bulk</code>,
+both of which import new and updated datasets.</p>
+
+<p>The <code>--scan</code> mode acts like a interactive search / browser with command line filters
+to import eligible datasets. While in <code>--bulk</code> mode, the <code>states[]</code> and <code>years[]</code>
+variables in <code>config.php</code> will be used to select which datasets will be
+synchronized. The latter of which is most appropriate for scheduling automated
+updates.</p>
+
+<p>Show the command help</p>
+
+<pre><code>php legiscan-bulk.php --help
+</code></pre>
+
+<p>Use <code>config.php</code> settings to import datasets and answer yes to any prompts.</p>
+
+<pre><code>php legiscan-bulk.php --bulk --import --yes
+</code></pre>
+
+<p>Show a listing of all available datasets in California and their status</p>
+
+<pre><code>php legiscan-bulk.php --scan --state CA
+</code></pre>
+
+<p>Import all new/changed datasets in 2020 with verbose output</p>
+
+<pre><code>php legiscan-bulk.php --scan --year 2020 --import --verbose
+</code></pre>
+
+<p>Import all new/changed 2016 special sessions in North Carolina</p>
+
+<pre><code>php legiscan-bulk.php --scan --state NC --special --year 2016 --import
+</code></pre>
+
+<p>Process <code>example.zip</code> but do not import, only show what would have been done</p>
+
+<pre><code>php legiscan-bulk.php --file example.zip --dry-run --debug
+</code></pre>
+
+<p><strong>NOTE</strong>: This will not pull local copies of documents unless they are
+included in the archive, though appropriate stub records will be created.</p>
+
+<h2>Pull Daemon</h2>
+
+<p>The <code>legiscand.php</code> script provides a daemon process that can use four different
+methods of keeping a local database synchronized via LegiScan Pull API.</p>
+
+<h3>Monitor</h3>
+
+<p>This mode will use the <code>ls_monitor</code> table to keep a specific <code>bill_id</code> list
+updated. This list can be managed with <code>legiscan-cli.php</code>, though determining
+the <code>bill_id</code> is an exercise for the reader and would require additional
+scripting, though a likely source would be through the search engine.</p>
+
+<pre><code>php legiscan-cli.php --monitor 823882
+php legiscan-cli.php --unmonitor 823882
+</code></pre>
+
+<h3>State</h3>
+
+<p>This mode will synchronize the entire master list from one or more states. To set
+the state list edit <code>config.php</code> and add each state to the <code>states[]</code> setting.</p>
+
+<p>For example to track all legislation in California and US Congress:</p>
+
+<pre><code>states[] = CA
+states[] = US
+</code></pre>
+
+<p><strong>NOTE</strong>: We <em>HIGHLY</em> recommend pre-loading the current state dataset with
+<code>legiscan-bulk.php</code> prior to the first run to minimize the on-boarding queries.</p>
+
+<h3>Search (National)</h3>
+
+<p>This mode will synchronize the results of searches ran against the national
+database. To specify the searches edit the <code>config.php</code> and add each search
+to the <code>searches[]</code> setting.</p>
+
+<p>The searches will also be filtered by the global <code>relevance</code> cutoff setting,
+which can be overridden on a per search basis by prepending a different score
+and the pipe <code>|</code> character. In addition a <code>state</code> abbreviations can also be
+prefixed to override either national or state search. When used with a <code>relevance</code>
+override the <code>state</code> should appear first separated by a comma <code>,</code>.</p>
+
+<p>Also notice that the entire search string should be quoted, and any internal
+quotes should be escaped as <code>\"</code>.</p>
+
+<pre><code>searches[] = "gender AND bathroom"
+searches[] = "\"national popular vote\""
+searches[] = "42|hemp OR cannabis OR marijuana"
+searches[] = "NY|charter ADJ schools"
+searches[] = "CA,60|vaccination AND status:passed"
+</code></pre>
+
+<h3>State Search</h3>
+
+<p>This mode combines both of the other methods such that the <code>searches[]</code> are only
+ran against the <code>states[]</code> list, unless a search specific <code>state</code> is used.</p>
+
+<h2>Push Endpoint</h2>
+
+<p>The <code>legiscan-push.php</code> script serves as the endpoint listener for LegiScan
+Push API services. This will receive payloads from the LegiScan Push server
+and process them into the provided database. The LegiScan API Client should
+be installed in a location that is accessible by your web server and externally
+by LegiScan servers.</p>
+
+<p>For additional authentication you may also set <code>api_auth_key</code> which can be found in
+the LegiScan API control panel at <a href="https://legiscan.com/legiscan">legiscan.com</a>.
+This will validate against the HTTP Authorization header sent with incoming payloads
+and reject those with invalid tokens.</p>
+
+<p>And if your API key is set to receive cooked application/x-www-form-urlencoded
+payloads, be sure to change the <code>push_form_var</code> setting to the form variable
+name specified in the API control panel.</p>
+
+<p><strong>NOTE</strong>: To utilize this script you will need a Push API subscription. </p>
+
+<h2>Command Line Interface</h2>
+
+<p>The CLI interface allow for importing specific objects from the command line
+along with manipulating some internal controls. This could be used for testing
+purposes or for automation with other custom scripting.</p>
+
+<p>Show the command help</p>
+
+<pre><code>php legiscan-cli.php --help
+</code></pre>
+
+<p>Import the current GAITS monitoring list associated with the API key and sync
+with the local <code>ls_monitor</code> list</p>
+
+<pre><code>php legiscan-cli.php --monitorlist --import all --sync
+</code></pre>
+
+<p>Get the master list for the most recent session in California, but do not
+actually import and dump the response payload</p>
+
+<pre><code>php legiscan-cli.php --dry-run --debug --masterlist CA
+</code></pre>
+
+<p>Request a specific <code>bill_id</code> be imported locally</p>
+
+<pre><code>php legiscan-cli.php --bill 823201
+</code></pre>
+
+<p>Run a national search and import new bills with a relevance score of 75% or higher</p>
+
+<pre><code>php legiscan-cli.php --search "citizens ADJ united" --state ALL --import new --score 75
+</code></pre>
+
+<p>Add a <code>bill_id</code> to the monitor list with support stance and synchronize with GAITS</p>
+
+<pre><code>php legiscan-cli.php --monitor 843038,908829,817390 --stance support --sync
+</code></pre>
+
+<p>Add a <code>bill_id</code> to the ignore list</p>
+
+<pre><code>php legiscan-cli.php --ignore 898381
+</code></pre>
+
+<p>Clean the API cache of stale entries</p>
+
+<pre><code>php legiscan-cli.php --clean --verbose
+</code></pre>
+
+<h2>Web Interface</h2>
+
+<p>The web interface is primarily for demonstration purposes to generate single
+API requests to examine payload structure. The LegiScan API client and <code>legiscan-ui.php</code>
+should be accessible by your web server. Then point your brower to the URL of
+interface script (e.g., http://example.com/legiscan/legiscan-ui.php).</p>
+
+<p>Enter your API key in the space provided, select the type of payload request
+you would like and enter the appropriate ID, then click <code>Run Test</code>.</p>
+
+<p>The system will then output the decoded payload response.</p>
+
+<h2>Middleware Signaling</h2>
+
+<p>The LegiScan API Client supports signaling a third party application of bill
+and related data changes so that additional processing can be done. The use case
+for this would be when the <code>legiscan_api</code> database is used as staging for another
+custom production system already in place.</p>
+
+<p>This is controlled by the <code>middleware_signal</code> setting and can be either <code>table</code>
+or <code>directory</code> based.</p>
+
+<h3>Table Signaling</h3>
+
+<p>When a bill first appears or later updated, or a new text, amendment, supplement,
+roll call or person record is created a record will be made in the <code>ls_signal</code>
+table within the <code>legiscan_api</code> database.</p>
+
+<p>This record will contain the <code>object_type</code>, its internal <code>object_id</code> and a
+<code>processed</code> flag.</p>
+
+<p>The third party application should scan the table for <code>processed = 0</code>, take
+any necessary actions, then update the record with <code>processed = 1</code>.</p>
+
+<h3>Directory Signaling</h3>
+
+<p>When a bill first appears or later updated, or a new text, amendment, supplement,
+roll call or person record is created a file will be created in the <code>signal</code>
+directory.</p>
+
+<p>This file will be named in the form of <code>object_type</code>.<code>object_id</code> and will contain
+a JSON object containing the same field along with the <code>updated</code> time stamp.</p>
+
+<p>The third party application should scan the directory for files, take any
+necessary actions, then delete the file from the <code>signal</code> directory.</p>
+
+<h2>Configure init.d and cron job</h2>
+
+<p>To install the LegiScan Pull Daemon so that it runs on startup and can be
+controlled by <code>service</code>. This file presumes the install location is <code>/opt/legiscan</code>,
+if this is not the case edit the <code>legiscan.service</code> file and change <code>LEGISCAN_PATH</code>.</p>
+
+<pre><code>cp legiscan.service /etc/init.d/legiscan
+chmod +x /etc/init.d/legiscan
+update-rc.d legiscan defaults
+service legiscan start
+</code></pre>
+
+<p>For scheduled bulk updates, the following will add a weekly cron job to pull 
+dataset updates as needed.</p>
+
+<pre><code>tee /etc/cron.weekly/legiscan-bulk &lt;&lt;EOF
+#!/bin/sh
+php -q /opt/legiscan/legiscan-bulk.php --bulk --import --yes
+EOF
+chmod +x /etc/cron.weekly/legiscan-bulk
+</code></pre>
+
+<p>If running via the Pull interface, the API cache directory will grow over time.
+This will create an hourly cron job to clean stale entries.</p>
+
+<pre><code>tee /etc/cron.hourly/legiscan-clean &lt;&lt;EOF
+#!/bin/sh
+php -q /opt/legiscan/legiscan-cli.php --clean
+EOF
+chmod +x /etc/cron.hourly/legiscan-clean
+</code></pre>
+</body>
+</html>
