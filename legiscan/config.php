@@ -27,16 +27,16 @@
 ;;
 [database]
 ;; localhost connection
-;; dsn = "pgsql:host=localhost;port=5432;dbname=legiscan_api"
+dsn = "pgsql:host=localhost;port=5432;dbname=legiscan_api"
 ;; User name used to connect to database
-;; db_user = legiscan_api
+db_user = legiscan_api
 ;; Password for db_user to connect with database
-;; db_pass = legiscan
+db_pass = legiscan
 
 ;; Supabase connection
-dsn = "pgsql:host=db.voyyujkxoakjppawnsyp.supabase.co;port=5432;dbname=postgres"
-db_user = postgres
-db_pass = mids-capstone210
+;;dsn = "pgsql:host=db.voyyujkxoakjppawnsyp.supabase.co;port=5432;dbname=postgres"
+;;db_user = postgres
+;;db_pass = mids-capstone210
 massage_dates = 1
 
 ;; Massage reserved date 0000-00-00 to relaxed NULL value for non MySQL databases

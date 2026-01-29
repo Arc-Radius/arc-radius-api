@@ -1497,7 +1497,7 @@ class LegiScan_Pull
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $this->request_url);
 			curl_setopt($ch, CURLOPT_FAILONERROR, true);
-			curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+			curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 			curl_setopt($ch, CURLOPT_BUFFERSIZE, 64000);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($ch, CURLOPT_USERAGENT, "LegiScan API Client " . LegiScan::VERSION);
