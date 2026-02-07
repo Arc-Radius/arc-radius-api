@@ -229,7 +229,13 @@ def process_csv_dir(csv_dir: Path, out_path: Path) -> int:
             result[col] = result[col].fillna(0).astype(int)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    result.to_csv(out_path, index=False)
+
+    # append if file already exists (e.g. "FL" and "FL 2" both map to FL_*)
+    if out_path.exists():
+        result.to_csv(out_path, mode="a", header=False, index=False)
+    else:
+        result.to_csv(out_path, index=False)
+
     return len(result)
 
 
@@ -251,6 +257,11 @@ def main():
         sys.exit(1)
 
     print(f"Found {len(csv_dirs)} dataset(s) to process.\n")
+
+    # clear stale output so the final concat only includes fresh data
+    if OUTPUT_DIR.exists():
+        shutil.rmtree(OUTPUT_DIR)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     total_rows = 0
 
