@@ -1,15 +1,23 @@
-#!/usr/bin/env python3
-
 """
-Join LegiScan bulk CSV files per state or congresssession (sponsors.csv, history.csv, documents.csv, rollcalls.csv, bills.csv) into bill-centric flat files.
+Join LegiScan bulk CSV files into bill-centric flat files.
 
-- Defaults to all .zip files in legiscan-bulk-csv/ when no args given
-- Accepts one or more .zip files or extracted directories
-- Safe zip extraction (zip-slip protected)
-- Walks all subdirectories to find valid CSV sets
-- Aggregates sponsors, history, documents, rollcalls per bill
-- Adds a 'state' column derived from directory structure
-- Concatenates all session CSVs into a single combined file
+Reads the per-session CSVs (bills, sponsors, people, history, documents,
+rollcalls) from each state folder, joins and aggregates them into one row
+per bill, then concatenates everything into a single master file.
+
+Requires:
+    Place LegiScan bulk data zips (e.g. 2021-2022.zip, 2023-2024.zip,
+    2025-2026.zip) in datasources/legiscan-bulk-csv/. The script will
+    extract them automatically if needed.
+
+Output:
+    datasources/legiscan-joined-by-state-session/
+        One CSV per state/session (e.g. AL_2021-2021_Regular_Session.csv).
+        Each file has one row per bill with aggregated sponsor, history,
+        document, and rollcall data plus a 'state' column.
+
+    datasources/legiscan-joined-all/all_bills_2021_2026.csv
+        All state/session CSVs concatenated into a single file.
 
 Usage:
     python concat_with_join_legiscan.py                          # process all zips (default)
@@ -27,15 +35,17 @@ import re
 import pandas as pd
 from pathlib import Path
 
+# Setup paths
 
 REQUIRED_FILES = ["bills.csv", "people.csv", "sponsors.csv", "history.csv", "documents.csv", "rollcalls.csv"]
 
 BULK_CSV_ROOT = (Path(__file__).parent / ".." / "legiscan-bulk-csv").resolve()
 DEFAULT_ZIPS = sorted(BULK_CSV_ROOT.glob("*.zip"))
 
-OUTPUT_DIR = (Path(__file__).parent / ".." / "legiscan-combined-by-state-year").resolve()
-COMBINED_PATH = (Path(__file__).parent / ".." / "legiscan-combined" / "all_bills_2021_2026.csv").resolve()
+OUTPUT_DIR = (Path(__file__).parent / ".." / "legiscan-joined-by-state-session").resolve()
+COMBINED_PATH = (Path(__file__).parent / ".." / "legiscan-joined-all" / "all_bills_2021_2026.csv").resolve()
 
+# Helper functions
 
 def letters_only(s: str) -> str:
     return re.sub(r"[^A-Za-z]", "", s or "")
@@ -116,8 +126,8 @@ def resolve_root_dir(input_path: Path) -> Path:
     raise FileNotFoundError("No valid zip or directory found.")
 
 
-# ── Aggregation helpers ──────────────────────────────────────────────
-
+# Aggregation helpers
+#!!!! IMPORTANT: This is important since these aggregate some of the one-to-many relationships so the final output is just one row per bill
 
 def aggregate_sponsors(sponsors: pd.DataFrame, people: pd.DataFrame) -> pd.DataFrame:
     # join sponsors with people to get names/parties, then collapse per bill
@@ -180,8 +190,7 @@ def aggregate_rollcalls(rollcalls: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-# ── Discovery & processing ───────────────────────────────────────────
-
+# Discovery & processing
 
 def discover_csv_dirs(root: Path) -> list[Path]:
     """Walk root and return every directory that contains all required CSV files."""
@@ -278,7 +287,7 @@ def main():
 
     print(f"Done. Wrote {total_rows} total rows across {len(csv_dirs)} files.\n")
 
-    # ── Concatenate all session CSVs into a single file ──────────────
+    #Concatenate all session CSVs into a single file
     print("Concatenating all session CSVs into single file...")
 
     csv_paths = sorted(OUTPUT_DIR.glob("*.csv"))
