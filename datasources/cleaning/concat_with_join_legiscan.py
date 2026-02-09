@@ -134,6 +134,9 @@ def aggregate_sponsors(sponsors: pd.DataFrame, people: pd.DataFrame) -> pd.DataF
     merged = sponsors.merge(people[["people_id", "name", "party"]], on="people_id", how="left")
     merged = merged.sort_values(["bill_id", "position"])
 
+    if merged.empty:
+        return pd.DataFrame(columns=["bill_id", "sponsor_names", "sponsor_parties", "primary_sponsor", "sponsor_count"])
+
     def _agg(group: pd.DataFrame) -> pd.Series:
         primary = group.loc[group["position"] == 1, "name"]
         return pd.Series(
@@ -150,6 +153,9 @@ def aggregate_sponsors(sponsors: pd.DataFrame, people: pd.DataFrame) -> pd.DataF
 
 def aggregate_history(history: pd.DataFrame) -> pd.DataFrame:
     # get action count and the most recent action per bill
+    if history.empty:
+        return pd.DataFrame(columns=["bill_id", "action_count", "last_history_action"])
+
     history = history.sort_values(["bill_id", "date", "sequence"])
 
     def _agg(group: pd.DataFrame) -> pd.Series:
@@ -165,6 +171,9 @@ def aggregate_history(history: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate_documents(documents: pd.DataFrame) -> pd.DataFrame:
     # count docs per bill and collect the legiscan text urls
+    if documents.empty:
+        return pd.DataFrame(columns=["bill_id", "document_count", "document_types", "document_urls"])
+
     def _agg(group: pd.DataFrame) -> pd.Series:
         return pd.Series(
             {
@@ -179,6 +188,9 @@ def aggregate_documents(documents: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate_rollcalls(rollcalls: pd.DataFrame) -> pd.DataFrame:
     # sum up yea/nay totals across all roll calls for each bill
+    if rollcalls.empty:
+        return pd.DataFrame(columns=["bill_id", "rollcall_count", "total_yea", "total_nay"])
+
     return (
         rollcalls.groupby("bill_id", sort=False)
         .agg(
