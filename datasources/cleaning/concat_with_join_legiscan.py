@@ -170,16 +170,20 @@ def aggregate_history(history: pd.DataFrame) -> pd.DataFrame:
 
 
 def aggregate_documents(documents: pd.DataFrame) -> pd.DataFrame:
-    # count docs per bill and collect the legiscan text urls
+    # keep only the most recent document per bill (by document_id desc)
     if documents.empty:
-        return pd.DataFrame(columns=["bill_id", "document_count", "document_types", "document_urls"])
+        return pd.DataFrame(columns=["bill_id", "document_count", "document_id", "document_type", "document_url"])
+
+    documents = documents.sort_values(["bill_id", "document_id"], na_position="first")
 
     def _agg(group: pd.DataFrame) -> pd.Series:
+        latest = group.iloc[-1]
         return pd.Series(
             {
                 "document_count": len(group),
-                "document_types": " | ".join(group["document_type"].dropna().unique()),
-                "document_urls": " | ".join(group["url"].dropna()),
+                "document_id": latest.get("document_id", ""),
+                "document_type": latest.get("document_type", ""),
+                "document_url": latest.get("url", ""),
             }
         )
 
@@ -244,7 +248,7 @@ def process_csv_dir(csv_dir: Path, out_path: Path) -> int:
     result = result.merge(documents_agg, on="bill_id", how="left")
     result = result.merge(rollcalls_agg, on="bill_id", how="left")
 
-    count_cols = ["sponsor_count", "action_count", "document_count", "rollcall_count", "total_yea", "total_nay"]
+    count_cols = ["sponsor_count", "action_count", "document_count", "document_id", "rollcall_count", "total_yea", "total_nay"]
     for col in count_cols:
         if col in result.columns:
             result[col] = result[col].fillna(0).astype(int)
