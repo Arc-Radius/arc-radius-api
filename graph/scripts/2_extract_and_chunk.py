@@ -20,6 +20,7 @@ BILL_TEXT_DIR = (
 FETCH_QUERY = """
 MATCH (b:Bill)-[:HAS_DOCUMENT]->(d:Document)
 WHERE NOT (d)-[:HAS_CHUNK]->(:Chunk)
+  AND d.skip IS NULL
 RETURN d.document_id AS document_id,
        d.url AS url,
        d.document_type AS document_type,
@@ -61,8 +62,11 @@ def main(limit: int = 100, max_docs: int | None = None):
                 d["bill_number"], str(d["document_id"]),
                 BILL_TEXT_DIR,
             )
-            # skip documents that have no local file
             if not path:
+                db.run(
+                    "MATCH (d:Document {document_id: $did}) SET d.skip = true",
+                    did=str(d["document_id"]),
+                )
                 print(f"[SKIP] no local file for doc {d['document_id']}")
                 continue
 

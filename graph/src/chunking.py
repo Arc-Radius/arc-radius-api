@@ -11,6 +11,8 @@ LEGAL_HEADING_RE = re.compile(
 # regex for line numbers (in many bills at the start of lines / in margins)
 LINE_NUMBER_RE = re.compile(r"^\d{1,3}$")
 
+# subdivision markers like (a), (1), (A) that signal body text
+_SUBDIV_RE = re.compile(r"\s+\([a-z0-9]\)\s", re.IGNORECASE)
 
 # filter out margin line numbers and other PDF extraction artifacts
 def _is_noise(element) -> bool:
@@ -24,9 +26,23 @@ def _is_noise(element) -> bool:
         return True
     return False
 
+# trim heading line to just the section designator
+def _trim_heading(raw: str, max_len: int = 80) -> str:
+    m = _SUBDIV_RE.search(raw)
+    if m:
+        raw = raw[: m.start()]
+    if len(raw) > max_len:
+        dot = raw.rfind(". ", 0, max_len)
+        if dot > 20:
+            raw = raw[: dot + 1]
+        else:
+            raw = raw[:max_len].rstrip() + "…"
+    return raw.rstrip()
+
+
 # find all legal headings in chunk text
 def _extract_headings(text: str) -> list[str]:
-    return [m.group(0).strip() for m in LEGAL_HEADING_RE.finditer(text)]
+    return [_trim_heading(m.group(0).strip()) for m in LEGAL_HEADING_RE.finditer(text)]
 
 
 # make chunks from elements
