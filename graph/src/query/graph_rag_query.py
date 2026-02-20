@@ -14,7 +14,7 @@ RETURN node.chunk_id AS chunk_id, node.text AS text, score
 ORDER BY score DESC
 """
 
-# expand query to find siblings and co-cited chunks
+# expand query to find sibling chunks within the same document
 #IMPORTANT: This should be changed based on how we want to expand the query using the graph structure
 EXPAND_CYPHER = """
 MATCH (seed:Chunk)
@@ -25,10 +25,7 @@ MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
 OPTIONAL MATCH (d)-[:HAS_CHUNK]->(sib:Chunk)
 WHERE abs(sib.chunk_index - seed.chunk_index) <= 2
 
-OPTIONAL MATCH (seed)-[:CITES]->(x:Citation)<-[:CITES]-(co:Chunk)
-
-RETURN collect(DISTINCT sib.chunk_id) AS siblings,
-       collect(DISTINCT co.chunk_id)[0..200] AS cocited
+RETURN collect(DISTINCT sib.chunk_id) AS siblings
 """
 
 # rerank query to find 20 most relevant chunks
@@ -46,14 +43,6 @@ METADATA_CYPHER = """
 UNWIND $chunk_ids AS cid
 MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk {chunk_id: cid})
 MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
-
-OPTIONAL MATCH (c)-[:CITES]->(cite:Citation)
-
-WITH c, d, b,
-     collect(DISTINCT {
-       canonical: cite.canonical,
-       jurisdiction: cite.jurisdiction
-     }) AS citations
 
 RETURN c.chunk_id AS chunk_id,
        c.section_path AS section_path,
@@ -75,8 +64,7 @@ RETURN c.chunk_id AS chunk_id,
        b.failed AS failed,
        b.vetoed AS vetoed,
        b.url AS bill_url,
-       b.state_link AS state_link,
-       citations
+       b.state_link AS state_link
 """
 
 # graph RAG query pipeline
@@ -94,12 +82,11 @@ def graph_rag_query(
         # run seed query to find 20 most relevant chunks
         seeds = db.run(SEED_CYPHER, qvec=qvec)
         seed_ids = [s["chunk_id"] for s in seeds]
-        # run expand query to find siblings and co-cited chunks
+        # run expand query to find sibling chunks
         exp = db.run(EXPAND_CYPHER, seed_ids=seed_ids)
         candidate_ids = set(seed_ids)
         for r in exp:
             candidate_ids.update(r.get("siblings") or [])
-            candidate_ids.update(r.get("cocited") or [])
         # run rerank query to find 20 most relevant chunks
         ranked = db.run(RERANK_CYPHER, qvec=qvec, candidate_ids=list(candidate_ids))
         # get top ranked chunks

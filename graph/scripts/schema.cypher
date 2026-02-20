@@ -7,9 +7,6 @@ FOR (d:Document) REQUIRE d.document_id IS UNIQUE;
 CREATE CONSTRAINT chunk_id IF NOT EXISTS
 FOR (c:Chunk) REQUIRE c.chunk_id IS UNIQUE;
 
-CREATE CONSTRAINT citation_id IF NOT EXISTS
-FOR (x:Citation) REQUIRE x.citation_id IS UNIQUE;
-
 CREATE CONSTRAINT person_id IF NOT EXISTS
 FOR (p:Person) REQUIRE p.people_id IS UNIQUE;
 

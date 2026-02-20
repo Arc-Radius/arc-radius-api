@@ -13,13 +13,6 @@ def _status_line(m: dict) -> str:
         parts.append("Vetoed")
     return ", ".join(parts) if parts else (m.get("status") or "Unknown")
 
-# format citations string for context block
-def _format_citations(citations: list[dict]) -> str:
-    if not citations or citations == [{}]:
-        return ""
-    valid = [c for c in citations if c.get("canonical")]
-    return ", ".join(c["canonical"] for c in valid)
-
 # format context block for a single chunk
 # IMPORTANT: This should be changed based on how we want to structure the context block for the LLM
 def format_context_block(chunk_text: str, meta: dict, score: float | None = None) -> str:
@@ -55,10 +48,6 @@ def format_context_block(chunk_text: str, meta: dict, score: float | None = None
     lines.append("---")
     lines.append(" ".join(chunk_text.split()))
     lines.append("---")
-
-    cites_str = _format_citations(meta.get("citations", []))
-    if cites_str:
-        lines.append(f"Statutory citations in this chunk: {cites_str}")
 
     urls = []
     if meta.get("bill_url"):
