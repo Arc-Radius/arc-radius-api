@@ -19,6 +19,9 @@ FOR (r:RollCall) REQUIRE r.roll_call_id IS UNIQUE;
 CREATE CONSTRAINT action_id IF NOT EXISTS
 FOR (a:Action) REQUIRE a.action_id IS UNIQUE;
 
+CREATE CONSTRAINT topic_name IF NOT EXISTS
+FOR (t:Topic) REQUIRE t.name IS UNIQUE;
+
 CREATE VECTOR INDEX chunkEmbeddingIndex IF NOT EXISTS
 FOR (c:Chunk)
 ON (c.embedding)
