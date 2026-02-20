@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import Depends
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import httpx
 
 load_dotenv()
 
@@ -126,6 +127,53 @@ def get_bills_with_filters(client: Client, state: str = None, limit: int = 20) -
     except Exception as e:
         raise Exception(
             f"Failed to fetch bills from Supabase with filters: {str(e)}") from e
+
+
+# ─── GraphQL (Supabase pg_graphql) ────────────────────────────
+
+import httpx
+
+
+async def execute_graphql(
+    query: str,
+    variables: Optional[dict] = None,
+) -> dict:
+    """
+    Execute a GraphQL query against Supabase's built-in pg_graphql endpoint.
+
+    Supabase exposes GraphQL at  {SUPABASE_URL}/graphql/v1
+    Docs: https://supabase.com/docs/guides/graphql
+
+    Args:
+        query:     GraphQL query or mutation string
+        variables: Optional dict of GraphQL variables
+
+    Returns:
+        The full JSON response from Supabase (data + errors, if any)
+
+    Raises:
+        ValueError:  If Supabase env vars are missing
+        httpx.HTTPStatusError: On non-2xx responses
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise ValueError(
+            "SUPABASE_URL and SUPABASE_KEY (anon or service-role) must be set"
+        )
+
+    graphql_url = f"{SUPABASE_URL}/graphql/v1"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload: dict = {"query": query}
+    if variables:
+        payload["variables"] = variables
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(graphql_url, json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
 
 
 # Usage examples:

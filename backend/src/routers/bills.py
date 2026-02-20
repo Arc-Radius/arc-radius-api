@@ -3,11 +3,11 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from src.routers.limiter import limiter
 import httpx
 from src.db.legiscan import get_legiscan_client, search_bill
-from src.db.supabase import get_bills_supabase, get_db
+from src.db.supabase import execute_graphql, get_bills_supabase, get_db
 from supabase import Client
 
 router = APIRouter(prefix="/bills", tags=["bills"])
@@ -17,32 +17,6 @@ def _data_dir() -> Path:
     """Resolve repo root / datasources path regardless of current working directory."""
     return Path(__file__).resolve().parents[3] / "datasources" / "aclu"
 
-
-def load_bills_from_json(limit: Optional[int] = None) -> List[Dict]:
-    """Load bill records from the packaged JSON snapshot."""
-    json_path = _data_dir() / "bill_classification_dict.json"
-    if not json_path.exists():
-        raise FileNotFoundError(f"Bill JSON not found at {json_path}")
-    try:
-        # utf-8-sig handles potential BOM; helps avoid control character errors
-        with json_path.open(encoding="utf-8-sig") as f:
-            data = json.load(f)
-    except JSONDecodeError as exc:
-        raise ValueError(
-            f"Failed to parse JSON at {json_path}: {exc}") from exc
-    return data[:limit] if limit else data
-
-
-# Load from JSON for now (keep a modest cap to avoid huge payloads in dev)
-_BILLS = load_bills_from_json(limit=200)
-print(f"Loaded {len(_BILLS)} bills")
-
-
-@router.get("/", summary="List bills")
-@limiter.limit("1/second")
-async def list_bills(request: Request):
-    """Return a list of bills (placeholder data)."""
-    return _BILLS
 
 
 @router.get("/legiscan", summary="Fetch bills from LegiScan API")
@@ -54,7 +28,7 @@ async def legiscan_api_bills(request: Request,
     latest status from LegiScan API in real-time.
     """
     # 1. Grab a slice of local bills
-    subset_bills = _BILLS[:5]
+    subset_bills = [{"state": "CA", "bill_number": "HB229"}]
 
     results = []
 
@@ -104,12 +78,46 @@ async def supabase_bills(
         )
 
 
-@router.get("/{bill_number}", summary="Get bill by number")
-@limiter.limit("1/second")
-async def get_bill(bill_number: str, request: Request):
-    """Return a single bill by its normalized number (e.g., 'HB229')."""
-    target = bill_number.lower()
-    for bill in _BILLS:
-        if str(bill.get("bill_number", "")).lower() == target:
-            return bill
-    raise HTTPException(status_code=404, detail="Bill not found")
+@router.post("/graphql", summary="Query bills via Supabase GraphQL (pg_graphql)")
+@limiter.limit("5/second")
+async def graphql_bills(
+    request: Request,
+    query: str = Body(..., description="GraphQL query string"),
+    variables: dict | None = Body(None, description="Optional GraphQL variables"),
+):
+    """
+    Forward a GraphQL query to Supabase's built-in pg_graphql endpoint.
+
+    Supabase auto-generates a GraphQL schema from your Postgres tables.
+    Table names become `<table>Collection` (e.g. `ls_billCollection`).
+
+    **Example request body:**
+    ```json
+    {
+        "query": "query { ls_billCollection(first: 5) { edges { node { bill_number title legiscan_url } } } }"
+    }
+    ```
+    """
+    try:
+        result = await execute_graphql(query=query, variables=variables)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"Supabase GraphQL error: {exc.response.text}",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to reach Supabase GraphQL: {str(exc)}",
+        )
+
+    # Surface GraphQL-level errors (Supabase returns 200 even on query errors)
+    if "errors" in result and result["errors"]:
+        raise HTTPException(
+            status_code=400,
+            detail={"graphql_errors": result["errors"]},
+        )
+
+    return result
