@@ -7,9 +7,6 @@ FOR (d:Document) REQUIRE d.document_id IS UNIQUE;
 CREATE CONSTRAINT chunk_id IF NOT EXISTS
 FOR (c:Chunk) REQUIRE c.chunk_id IS UNIQUE;
 
-CREATE CONSTRAINT citation_id IF NOT EXISTS
-FOR (x:Citation) REQUIRE x.citation_id IS UNIQUE;
-
 CREATE CONSTRAINT person_id IF NOT EXISTS
 FOR (p:Person) REQUIRE p.people_id IS UNIQUE;
 
@@ -21,6 +18,9 @@ FOR (r:RollCall) REQUIRE r.roll_call_id IS UNIQUE;
 
 CREATE CONSTRAINT action_id IF NOT EXISTS
 FOR (a:Action) REQUIRE a.action_id IS UNIQUE;
+
+CREATE CONSTRAINT topic_name IF NOT EXISTS
+FOR (t:Topic) REQUIRE t.name IS UNIQUE;
 
 CREATE VECTOR INDEX chunkEmbeddingIndex IF NOT EXISTS
 FOR (c:Chunk)

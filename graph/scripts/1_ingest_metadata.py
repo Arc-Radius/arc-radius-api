@@ -2,6 +2,7 @@
 Ingest bill metadata and relational data from LegiScan bulk CSVs into Neo4j. Filter to matched bills from EDA matched_lgbtq_bills.csv
 """
 
+import ast
 import csv
 import re
 from pathlib import Path
@@ -35,6 +36,7 @@ EDA_FIELDS = [
     "label", "label_source", "year", "state_lean", "bill_dominant_party",
     "passed", "failed", "vetoed", "r_sponsorship_ratio", "pass_rate_gap",
     "overall_pass_rate", "bipartisan_ratio", "session_year",
+    "issues", "issue_categories",
 ]
 
 FALLBACK_FIELDS = [
@@ -77,7 +79,8 @@ SET b.state          = row.state,
     b.pass_rate_gap  = row.pass_rate_gap,
     b.overall_pass_rate = row.overall_pass_rate,
     b.bipartisan_ratio = row.bipartisan_ratio,
-    b.session_year   = row.session_year
+    b.session_year   = row.session_year,
+    b.issues         = row.issues
 """
 
 # person nodes
@@ -190,6 +193,20 @@ MATCH (a:Action {action_id: row.action_id})
 MERGE (b)-[:HAS_ACTION]->(a)
 """
 
+# topic nodes
+TOPIC_CYPHER = """
+UNWIND $rows AS row
+MERGE (t:Topic {name: row.name})
+"""
+
+# has topic relationship
+HAS_TOPIC_REL = """
+UNWIND $rows AS row
+MATCH (b:Bill {bill_pk: row.bill_pk})
+MATCH (t:Topic {name: row.topic})
+MERGE (b)-[:HAS_TOPIC]->(t)
+"""
+
 # ---------------------------------------------------------------------------
 # helpers for csv ingestion gathering docs etc
 # remove non-letters from state name
@@ -206,6 +223,17 @@ def _discover_csv_dirs(root: Path) -> list[Path]:
     return dirs
 
 # load matched bills CSV from EDA into bill_ids and eda dict
+def _parse_list_field(val: str) -> list[str]:
+    """Parse a string-encoded list like "['a', 'b']" back into a Python list."""
+    if not val:
+        return []
+    try:
+        parsed = ast.literal_eval(val)
+        return list(parsed) if isinstance(parsed, (list, tuple)) else []
+    except (ValueError, SyntaxError):
+        return []
+
+
 def _load_matched(path: Path) -> tuple[set[int], dict[int, dict]]:
     """Return (bill_id_set, {bill_id: eda_fields + _fallback dict})."""
     bill_ids: set[int] = set()
@@ -541,6 +569,18 @@ def main():
                 "action_id": f"{h['bill_id']}:{h['sequence']}",
             })
 
+    # build topic nodes and HAS_TOPIC rels from issue_categories
+    topic_names: set[str] = set()
+    topic_rels: list[dict] = []
+
+    for br in bill_rows:
+        cats = _parse_list_field(br.get("issue_categories", ""))
+        for cat in cats:
+            topic_names.add(cat)
+            topic_rels.append({"bill_pk": br["bill_pk"], "topic": cat})
+
+    topic_rows = [{"name": n} for n in sorted(topic_names)]
+
     # ingest into Neo4j! Hooray!
     db = Neo4j()
     print("Ingesting nodes...")
@@ -550,6 +590,7 @@ def main():
     _ingest(db, DOCUMENT_CYPHER, doc_rows, "Document")
     _ingest(db, ROLLCALL_CYPHER, rollcall_rows, "RollCall")
     _ingest(db, ACTION_CYPHER, action_rows, "Action")
+    _ingest(db, TOPIC_CYPHER, topic_rows, "Topic")
 
     print("Ingesting relationships...")
     _ingest(db, SPONSORS_REL, sponsor_rels, "SPONSORS")
@@ -558,6 +599,7 @@ def main():
     _ingest(db, HAS_ROLLCALL_REL, rc_rels, "HAS_ROLLCALL")
     _ingest(db, VOTED_REL, vote_rows, "VOTED")
     _ingest(db, HAS_ACTION_REL, action_rels, "HAS_ACTION")
+    _ingest(db, HAS_TOPIC_REL, topic_rels, "HAS_TOPIC")
 
     db.close()
     # Total success!
