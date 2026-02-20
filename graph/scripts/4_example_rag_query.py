@@ -11,7 +11,7 @@ load_dotenv()
 from src.query.formatting import format_context_block
 from src.query import graph_rag_query
 
-DEFAULT_QUERY = "What states"
+DEFAULT_QUERY = "How does Texas compare to other states in terms of handling transgender athletes in school sports?"
 
 
 def main():
