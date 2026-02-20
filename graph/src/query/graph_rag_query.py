@@ -14,8 +14,7 @@ RETURN node.chunk_id AS chunk_id, node.text AS text, score
 ORDER BY score DESC
 """
 
-# expand query to find sibling chunks within the same document
-#IMPORTANT: This should be changed based on how we want to expand the query using the graph structure
+# expand query: sibling chunks (same doc, +/-2 index) + topic-neighbor chunks
 EXPAND_CYPHER = """
 MATCH (seed:Chunk)
 WHERE seed.chunk_id IN $seed_ids
@@ -25,7 +24,15 @@ MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
 OPTIONAL MATCH (d)-[:HAS_CHUNK]->(sib:Chunk)
 WHERE abs(sib.chunk_index - seed.chunk_index) <= 2
 
-RETURN collect(DISTINCT sib.chunk_id) AS siblings
+WITH seed, b, collect(DISTINCT sib.chunk_id) AS siblings
+
+OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(ob:Bill)
+WHERE ob <> b
+OPTIONAL MATCH (ob)-[:HAS_DOCUMENT]->(od:Document)-[:HAS_CHUNK]->(tc:Chunk)
+
+WITH siblings, collect(DISTINCT tc.chunk_id)[..50] AS topic_chunks
+
+RETURN siblings, topic_chunks
 """
 
 # rerank query to find 20 most relevant chunks
@@ -82,11 +89,12 @@ def graph_rag_query(
         # run seed query to find 20 most relevant chunks
         seeds = db.run(SEED_CYPHER, qvec=qvec)
         seed_ids = [s["chunk_id"] for s in seeds]
-        # run expand query to find sibling chunks
+        # run expand query to find sibling + topic-neighbor chunks
         exp = db.run(EXPAND_CYPHER, seed_ids=seed_ids)
         candidate_ids = set(seed_ids)
         for r in exp:
             candidate_ids.update(r.get("siblings") or [])
+            candidate_ids.update(r.get("topic_chunks") or [])
         # run rerank query to find 20 most relevant chunks
         ranked = db.run(RERANK_CYPHER, qvec=qvec, candidate_ids=list(candidate_ids))
         # get top ranked chunks
