@@ -11,7 +11,7 @@ load_dotenv()
 from src.query.formatting import format_context_block
 from src.query import graph_rag_query
 
-DEFAULT_QUERY = "What penalties do states impose on healthcare providers who offer gender-affirming care to minors?"
+DEFAULT_QUERY = "What states"
 
 
 def main():
