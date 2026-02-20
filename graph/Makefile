@@ -18,6 +18,9 @@ extract:
 embed:
 	python scripts/3_embed.py
 
+query-example:
+	python scripts/4_example_rag_query.py
+
 wait:
 	@echo "Waiting for Neo4j..."
 	@sleep 15
