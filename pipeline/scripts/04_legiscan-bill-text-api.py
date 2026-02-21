@@ -17,10 +17,9 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 API_KEY = os.getenv("LEGISCAN_API_KEY")
 API_URL = "https://api.legiscan.com/"
-SCRIPT_DIR = Path(__file__).parent
-OUTPUT_DIR = SCRIPT_DIR / "bill-text"
-LOG_FILE = SCRIPT_DIR / "bill_text_retrieval.txt"
-DEFAULT_CSV = SCRIPT_DIR.parent / "eda" / "matched_lgbtq_bills.csv"
+OUTPUT_DIR = Path("datasources") / "legiscan-bill-text" / "bill-text"
+LOG_FILE = Path("datasources") / "legiscan-bill-text" / "bill_text_retrieval.txt"
+DEFAULT_CSV = Path("datasources") / "final-outputs" / "matched_lgbtq_bills.csv"
 
 MIME_EXT = {
     "application/pdf": ".pdf",

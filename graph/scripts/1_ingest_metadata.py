@@ -2,6 +2,7 @@
 Ingest bill metadata and relational data from LegiScan bulk CSVs into Neo4j. Filter to matched bills from EDA matched_lgbtq_bills.csv
 """
 
+from src.neo4j_client import Neo4j
 import ast
 import csv
 import re
@@ -11,17 +12,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.neo4j_client import Neo4j
-
 
 # paths and constants
 # path to matched bills CSV
 MATCHED_CSV = (
-    Path(__file__).resolve().parents[1] / ".." / "datasources" / "eda" / "matched_lgbtq_bills.csv"
+    Path(__file__).resolve(
+    ).parents[1] / ".." / "datasources" / "final-outputs" / "matched_lgbtq_bills.csv"
 )
 # path to root of bulk CSV directory
 BULK_CSV_ROOT = (
-    Path(__file__).resolve().parents[1] / ".." / "datasources" / "legiscan-bulk-csv"
+    Path(__file__).resolve().parents[1] /
+    ".." / "datasources" / "legiscan-bulk-csv"
 )
 
 # required files in each bulk CSV directory
@@ -210,10 +211,14 @@ MERGE (b)-[:HAS_TOPIC]->(t)
 # ---------------------------------------------------------------------------
 # helpers for csv ingestion gathering docs etc
 # remove non-letters from state name
+
+
 def _letters_only(s: str) -> str:
     return re.sub(r"[^A-Za-z]", "", s or "")
 
 # discover csv directories
+
+
 def _discover_csv_dirs(root: Path) -> list[Path]:
     dirs = []
     for dirpath in root.rglob("*"):
@@ -223,6 +228,8 @@ def _discover_csv_dirs(root: Path) -> list[Path]:
     return dirs
 
 # load matched bills CSV from EDA into bill_ids and eda dict
+
+
 def _parse_list_field(val: str) -> list[str]:
     """Parse a string-encoded list like "['a', 'b']" back into a Python list."""
     if not val:
@@ -244,11 +251,14 @@ def _load_matched(path: Path) -> tuple[set[int], dict[int, dict]]:
             bid = int(row["bill_id"])
             bill_ids.add(bid)
             eda[bid] = {k: row.get(k, "") for k in EDA_FIELDS}
-            eda[bid]["_fallback"] = {k: row.get(k, "") for k in FALLBACK_FIELDS}
+            eda[bid]["_fallback"] = {k: row.get(
+                k, "") for k in FALLBACK_FIELDS}
 
     return bill_ids, eda
 
 # gather bulk CSV data from directory, filter to matched bills, return all entities
+
+
 def _gather_bulk(csv_dirs: list[Path], bill_ids: set[int]) -> dict:
     bills: dict[int, dict] = {}
     people: dict[int, dict] = {}
@@ -399,16 +409,17 @@ def _gather_bulk(csv_dirs: list[Path], bill_ids: set[int]) -> dict:
 # batch items into lists of size BATCH_SIZE
 def _batched(items: list, size: int = BATCH_SIZE):
     for i in range(0, len(items), size):
-        yield items[i : i + size]
+        yield items[i: i + size]
 
 # ingest nodes and relationships
+
+
 def _ingest(db: Neo4j, cypher: str, rows: list[dict], label: str):
     total = 0
     for batch in _batched(rows):
         db.run_batch(cypher, batch)
         total += len(batch)
     print(f"  {label}: {total}")
-
 
 
 def main():
