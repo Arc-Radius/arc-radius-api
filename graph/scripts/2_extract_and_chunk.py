@@ -1,12 +1,12 @@
+from src.neo4j_client import Neo4j
+from src.extract_text import extract_elements, local_bill_path
+from src.chunking import make_chunks
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.chunking import make_chunks
-from src.extract_text import extract_elements, local_bill_path
-from src.neo4j_client import Neo4j
 
 BILL_TEXT_DIR = (
     Path(__file__).resolve().parents[1]
@@ -78,9 +78,11 @@ def main(limit: int = 100, max_docs: int | None = None):
                 continue
 
             # skip documents that have no text
-            text = "\n".join(e.text for e in elements if getattr(e, "text", None))
+            text = "\n".join(
+                e.text for e in elements if getattr(e, "text", None))
             if not text or len(text) < 200:
-                print(f"[WARN] too little text for {d['document_id']} ({len(text)} chars)")
+                print(
+                    f"[WARN] too little text for {d['document_id']} ({len(text)} chars)")
                 db.run(
                     "MATCH (d:Document {document_id: $did}) SET d.extracted_at = datetime(), d.extracted_len = $n",
                     did=d["document_id"], n=len(text),
@@ -111,7 +113,7 @@ def main(limit: int = 100, max_docs: int | None = None):
             # create chunks for documents
             for i in range(0, len(chunk_rows), 200):
                 # add chunks to database
-                db.run_batch(CHUNK_CYPHER, chunk_rows[i : i + 200])
+                db.run_batch(CHUNK_CYPHER, chunk_rows[i: i + 200])
 
             processed += 1
             # log progress
@@ -129,10 +131,11 @@ def main(limit: int = 100, max_docs: int | None = None):
 
 if __name__ == "__main__":
     import argparse
-    
+
     # parse command line argument for max number of documents
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-docs", type=int, default=None, help="Cap total documents processed")
+    parser.add_argument("--max-docs", type=int, default=None,
+                        help="Cap total documents processed")
     args = parser.parse_args()
     # run main function with max number of documents
     main(max_docs=args.max_docs)

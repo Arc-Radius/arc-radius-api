@@ -41,13 +41,24 @@ async def _request(
 
 
 async def search_bill(
-    state: str,
-    bill: str,
+    state: Optional[str] = "ALL",
+    query: Optional[str] = None,
+    bill: Optional[str] = None,
+    year: Optional[int] = None,
+    page: Optional[int] = None,
     api_key: Optional[str] = None,
     client: Optional[httpx.AsyncClient] = None,
 ) -> dict:
-    """Search for a bill."""
-    return await _request("getSearch", {"state": state, "bill": bill}, api_key, client)
+    """Search for bills via LegiScan.
+
+    Use `query` for full text search or `bill` for structured bill number lookup.
+    """
+    params: dict = {"state": state, "year": year, "page": page}
+    if bill:
+        params["bill"] = bill
+    if query:
+        params["query"] = query
+    return await _request("getSearch", params, api_key, client)
 
 
 async def get_bill(

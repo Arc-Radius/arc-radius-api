@@ -6,42 +6,62 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from src.routers.limiter import limiter
 import httpx
-from src.db.legiscan import get_legiscan_client, search_bill
+from src.db.legiscan import get_legiscan_client, search_bill, get_bill
 from src.db.supabase import execute_graphql, get_bills_supabase, get_db
 from supabase import Client
 
 router = APIRouter(prefix="/bills", tags=["bills"])
 
 
-def _data_dir() -> Path:
-    """Resolve repo root / datasources path regardless of current working directory."""
-    return Path(__file__).resolve().parents[3] / "datasources" / "aclu"
-
-
-
-@router.get("/legiscan", summary="Fetch bills from LegiScan API")
+@router.get("/search", summary="Full text search for bills")
 @limiter.limit("1/second")
-async def legiscan_api_bills(request: Request,
-                             client: httpx.AsyncClient = Depends(get_legiscan_client)):
+async def legiscan_search_bills(
+    request: Request,
+    state: str = "ALL",
+    text_search: Optional[str] = None,
+    bill_number: Optional[str] = None,
+    year: Optional[int] = None,
+    page: Optional[int] = None,
+    client: httpx.AsyncClient = Depends(get_legiscan_client),
+):
     """
-    Example: Take the first 5 local bills and fetch their 
-    latest status from LegiScan API in real-time.
+    Search bills using the LegiScan search engine.
+
+    - **state**: State abbreviation (e.g. CA, TX) or ALL for nationwide
+    - **query**: Full text search (e.g. "housing affordability")
+    - **bill**: Structured bill number lookup (e.g. "HB229")
+    - **year**: 1=all, 2=current (default), 3=recent, 4=prior, or >1900 for exact year
+    - **page**: Result page number (default: 1)
+
+    Provide either `query` or `bill` (or both).
     """
-    # 1. Grab a slice of local bills
-    subset_bills = [{"state": "CA", "bill_number": "HB229"}]
+    if not text_search and not bill_number:
+        raise HTTPException(
+            status_code=400, detail="Either text_search or bill_number parameter is required")
+    if text_search and bill_number:
+        raise HTTPException(
+            status_code=400, detail="Provide text_search for full text search or bill_number for structured bill number lookup, not both")
 
-    results = []
+    return await search_bill(
+        state=state,
+        query=text_search,
+        bill=bill_number,
+        year=year,
+        page=page,
+        client=client,
+    )
 
-    # 2. Open the connection ONCE
-    for bill in subset_bills:
-        bill_data = await search_bill(
-            state=bill["state"],
-            bill=bill["bill_number"],
-            client=client
-        )
-        results.append(bill_data)
 
-    return results
+@router.get("/get", summary="Get a bill by ID")
+@limiter.limit("1/second")
+async def legiscan_get_bill_by_id(request: Request,
+                                  bill_id: int,
+                                  client: httpx.AsyncClient = Depends(get_legiscan_client)):
+    """
+    Get a bill by ID from LegiScan API. The bill_id is the internal bill id for the requested bill.
+    """
+    bill_data = await get_bill(bill_id=bill_id, client=client)
+    return bill_data
 
 
 @router.get("/supabase", summary="Fetch bills from Supabase database")
@@ -83,7 +103,8 @@ async def supabase_bills(
 async def graphql_bills(
     request: Request,
     query: str = Body(..., description="GraphQL query string"),
-    variables: dict | None = Body(None, description="Optional GraphQL variables"),
+    variables: dict | None = Body(
+        None, description="Optional GraphQL variables"),
 ):
     """
     Forward a GraphQL query to Supabase's built-in pg_graphql endpoint.
