@@ -1,12 +1,9 @@
-import json
-from json import JSONDecodeError
-from pathlib import Path
-from typing import Dict, List, Optional
-
+import asyncio
+from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from src.routers.limiter import limiter
 import httpx
-from src.db.legiscan import get_legiscan_client, search_bill, get_bill
+from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
 from src.db.supabase import execute_graphql, get_bills_supabase, get_db
 from supabase import Client
 
@@ -61,6 +58,55 @@ async def legiscan_get_bill_by_id(request: Request,
     Get a bill by ID from LegiScan API. The bill_id is the internal bill id for the requested bill.
     """
     bill_data = await get_bill(bill_id=bill_id, client=client)
+    return bill_data
+
+
+@router.get("/rag", summary="Graph RAG query over bill chunks")
+@limiter.limit("1/second")
+async def knowledge_graph_query(
+    request: Request,
+    query: str,
+    top: int = 10,
+):
+    """
+    Run a natural language query against the bill knowledge graph.
+
+    - **query**: Natural language question (e.g. "How does Texas handle transgender athletes in school sports?")
+    - **top**: Number of top-ranked chunks to return (default: 10)
+    """
+
+    from graph.api.query import graph_rag_query
+
+    ranked, meta, context = await asyncio.to_thread(graph_rag_query, query, top=top)
+
+    return {
+        "query": query,
+        "results": [
+            {
+                "chunk_id": r["chunk_id"],
+                "text": r["text"],
+                "score": r["score"],
+                "meta": meta.get(r["chunk_id"], {}),
+            }
+            for r in ranked
+        ],
+        "context": context,
+    }
+
+
+@router.get("/get-with-text", summary="Get a bill and its latest text")
+@limiter.limit("1/second")
+async def legiscan_get_bill_with_text(
+    request: Request,
+    bill_id: int,
+    client: httpx.AsyncClient = Depends(get_legiscan_client),
+):
+    """
+    Get bill details and the latest bill text in one call.
+
+    Chains getBill → getBillText using the latest doc_id from the bill's texts array.
+    """
+    bill_data = await get_bill_with_text(bill_id=bill_id, client=client)
     return bill_data
 
 

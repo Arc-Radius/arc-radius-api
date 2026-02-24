@@ -1,6 +1,9 @@
 import os
 
 from neo4j import GraphDatabase
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Neo4j:
