@@ -1,12 +1,12 @@
 import asyncio
+import httpx
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from src.routers.limiter import limiter
-import httpx
 from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
 from src.db.supabase import execute_graphql, get_bills_supabase, get_db
 from supabase import Client
-
+from services.rag_service import query_and_generate
 router = APIRouter(prefix="/bills", tags=["bills"])
 
 
@@ -69,29 +69,16 @@ async def knowledge_graph_query(
     top: int = 10,
 ):
     """
-    Run a natural language query against the bill knowledge graph.
-
-    - **query**: Natural language question (e.g. "How does Texas handle transgender athletes in school sports?")
-    - **top**: Number of top-ranked chunks to return (default: 10)
+    Takes a natural language question, retrieves relevant bill chunks from the
+    knowledge graph, and returns an LLM-generated answer grounded in retrieved data.
+    - **query**: Natural language question (e.g. "What bills affect trans youth in Texas?")
+    - **top**: Number of top-ranked chunks to retrieve for context (default: 10)
+    Returns:
+    - **answer**: LLM-generated response from user prompt and bill chunks
+    - **sources**: Retrieved bill chunks with relevance scores and metadata
     """
-
-    from graph.api.query import graph_rag_query
-
-    ranked, meta, context = await asyncio.to_thread(graph_rag_query, query, top=top)
-
-    return {
-        "query": query,
-        "results": [
-            {
-                "chunk_id": r["chunk_id"],
-                "text": r["text"],
-                "score": r["score"],
-                "meta": meta.get(r["chunk_id"], {}),
-            }
-            for r in ranked
-        ],
-        "context": context,
-    }
+    result = await asyncio.to_thread(query_and_generate, query, top=top)
+    return result
 
 
 @router.get("/get-with-text", summary="Get a bill and its latest text")

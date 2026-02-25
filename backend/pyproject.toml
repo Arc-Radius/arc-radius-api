@@ -23,6 +23,7 @@ dependencies = [
     "unstructured[local-inference] (>=0.21.2,<0.22.0)",
     "beautifulsoup4 (>=4.14.3,<5.0.0)",
     "lxml (>=6.0.2,<7.0.0)",
+    "boto3 (>=1.42.56,<2.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]
