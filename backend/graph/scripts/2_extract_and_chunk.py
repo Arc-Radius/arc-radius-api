@@ -1,6 +1,6 @@
-from src.neo4j_client import Neo4j
-from src.extract_text import extract_elements, local_bill_path
-from src.chunking import make_chunks
+from graph.api.neo4j_client import Neo4j
+from graph.api.extract_text import extract_elements, local_bill_path
+from graph.api.chunking import make_chunks
 from pathlib import Path
 
 from dotenv import load_dotenv

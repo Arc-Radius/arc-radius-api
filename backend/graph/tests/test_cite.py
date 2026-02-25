@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.citations import extract_citations
-from src.extract_text import extract_text_from_file
+from graph.api.citations import extract_citations
+from graph.api.extract_text import extract_text_from_file
 
 DEFAULT = (
     Path(__file__).resolve().parents[2]

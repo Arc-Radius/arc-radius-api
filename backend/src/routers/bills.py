@@ -1,15 +1,12 @@
-import json
-from json import JSONDecodeError
-from pathlib import Path
-from typing import Dict, List, Optional
-
+import asyncio
+import httpx
+from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from src.routers.limiter import limiter
-import httpx
-from src.db.legiscan import get_legiscan_client, search_bill, get_bill
+from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
 from src.db.supabase import execute_graphql, get_bills_supabase, get_db
 from supabase import Client
-
+from services.rag_service import query_and_generate
 router = APIRouter(prefix="/bills", tags=["bills"])
 
 
@@ -61,6 +58,42 @@ async def legiscan_get_bill_by_id(request: Request,
     Get a bill by ID from LegiScan API. The bill_id is the internal bill id for the requested bill.
     """
     bill_data = await get_bill(bill_id=bill_id, client=client)
+    return bill_data
+
+
+@router.get("/rag", summary="Graph RAG query over bill chunks")
+@limiter.limit("1/second")
+async def knowledge_graph_query(
+    request: Request,
+    query: str,
+    top: int = 10,
+):
+    """
+    Takes a natural language question, retrieves relevant bill chunks from the
+    knowledge graph, and returns an LLM-generated answer grounded in retrieved data.
+    - **query**: Natural language question (e.g. "What bills affect trans youth in Texas?")
+    - **top**: Number of top-ranked chunks to retrieve for context (default: 10)
+    Returns:
+    - **answer**: LLM-generated response from user prompt and bill chunks
+    - **sources**: Retrieved bill chunks with relevance scores and metadata
+    """
+    result = await asyncio.to_thread(query_and_generate, query, top=top)
+    return result
+
+
+@router.get("/get-with-text", summary="Get a bill and its latest text")
+@limiter.limit("1/second")
+async def legiscan_get_bill_with_text(
+    request: Request,
+    bill_id: int,
+    client: httpx.AsyncClient = Depends(get_legiscan_client),
+):
+    """
+    Get bill details and the latest bill text in one call.
+
+    Chains getBill → getBillText using the latest doc_id from the bill's texts array.
+    """
+    bill_data = await get_bill_with_text(bill_id=bill_id, client=client)
     return bill_data
 
 

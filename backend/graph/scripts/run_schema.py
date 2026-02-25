@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.neo4j_client import Neo4j
+from graph.api.neo4j_client import Neo4j
 
 def main():
     db = Neo4j()
