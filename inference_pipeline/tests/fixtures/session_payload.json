@@ -1,0 +1,23 @@
+{
+  "status": "OK",
+  "sessions": {
+    "state": "CA",
+    "session": [
+      {
+        "session_id": 101,
+        "state": "CA",
+        "prior": 0,
+        "sine_die": 0,
+        "year_end": 2030
+      },
+      {
+        "session_id": 88,
+        "state": "CA",
+        "prior": 1,
+        "sine_die": 1,
+        "year_end": 2022
+      }
+    ]
+  }
+}
+

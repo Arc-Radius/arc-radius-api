@@ -43,3 +43,5 @@ bill-text.zip
 bill-text/
 
 helpful_queries.txt
+
+**/.tmp_dagster_home_*/

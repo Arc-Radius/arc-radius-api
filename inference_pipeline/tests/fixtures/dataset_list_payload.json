@@ -1,0 +1,13 @@
+{
+  "status": "OK",
+  "datasetlist": [
+    {
+      "session_id": 101,
+      "state": "CA",
+      "dataset_hash": "hash-a",
+      "dataset_date": "2026-02-01",
+      "access_key": "ak-101"
+    }
+  ]
+}
+
