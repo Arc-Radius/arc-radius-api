@@ -200,12 +200,50 @@ UNWIND $rows AS row
 MERGE (t:Topic {name: row.name})
 """
 
+# state nodes
+STATE_CYPHER = """
+UNWIND $rows AS row
+MERGE (s:State {code: row.code})
+"""
+
+# session nodes
+SESSION_CYPHER = """
+UNWIND $rows AS row
+MERGE (sn:Session {session_pk: row.session_pk})
+SET sn.session_id = row.session_id,
+    sn.state_code = row.state_code
+"""
+
 # has topic relationship
 HAS_TOPIC_REL = """
 UNWIND $rows AS row
 MATCH (b:Bill {bill_pk: row.bill_pk})
 MATCH (t:Topic {name: row.topic})
 MERGE (b)-[:HAS_TOPIC]->(t)
+"""
+
+# in-state relationship
+IN_STATE_REL = """
+UNWIND $rows AS row
+MATCH (b:Bill {bill_pk: row.bill_pk})
+MATCH (s:State {code: row.code})
+MERGE (b)-[:IN_STATE]->(s)
+"""
+
+# in-session relationship
+IN_SESSION_REL = """
+UNWIND $rows AS row
+MATCH (b:Bill {bill_pk: row.bill_pk})
+MATCH (sn:Session {session_pk: row.session_pk})
+MERGE (b)-[:IN_SESSION]->(sn)
+"""
+
+# state-has-session relationship
+HAS_SESSION_REL = """
+UNWIND $rows AS row
+MATCH (s:State {code: row.state_code})
+MATCH (sn:Session {session_pk: row.session_pk})
+MERGE (s)-[:HAS_SESSION]->(sn)
 """
 
 # ---------------------------------------------------------------------------
@@ -215,6 +253,15 @@ MERGE (b)-[:HAS_TOPIC]->(t)
 
 def _letters_only(s: str) -> str:
     return re.sub(r"[^A-Za-z]", "", s or "")
+
+
+def _normalize_state_code(s: str) -> str:
+    code = _letters_only(s).upper()
+    return code[:2] if len(code) >= 2 else ""
+
+
+def _normalize_session_id(s: str) -> str:
+    return str(s or "").strip()
 
 # discover csv directories
 
@@ -591,11 +638,48 @@ def main():
             topic_rels.append({"bill_pk": br["bill_pk"], "topic": cat})
 
     topic_rows = [{"name": n} for n in sorted(topic_names)]
+    state_codes = sorted(
+        {_normalize_state_code(br.get("state", "")) for br in bill_rows}
+        - {""}
+    )
+    state_rows = [{"code": code} for code in state_codes]
+    in_state_rels = []
+    for br in bill_rows:
+        code = _normalize_state_code(br.get("state", ""))
+        if code:
+            in_state_rels.append({"bill_pk": br["bill_pk"], "code": code})
+    session_keys: set[tuple[str, str]] = set()
+    session_rows: list[dict] = []
+    in_session_rels: list[dict] = []
+    has_session_rels: list[dict] = []
+    for br in bill_rows:
+        state_code = _normalize_state_code(br.get("state", ""))
+        session_id = _normalize_session_id(br.get("session_id", ""))
+        if not state_code or not session_id:
+            continue
+        session_pk = f"{state_code}:{session_id}"
+        if (state_code, session_id) not in session_keys:
+            session_keys.add((state_code, session_id))
+            session_rows.append({
+                "session_pk": session_pk,
+                "session_id": session_id,
+                "state_code": state_code,
+            })
+            has_session_rels.append({
+                "state_code": state_code,
+                "session_pk": session_pk,
+            })
+        in_session_rels.append({
+            "bill_pk": br["bill_pk"],
+            "session_pk": session_pk,
+        })
 
     # ingest into Neo4j! Hooray!
     db = Neo4j()
     print("Ingesting nodes...")
     _ingest(db, BILL_CYPHER, bill_rows, "Bill")
+    _ingest(db, STATE_CYPHER, state_rows, "State")
+    _ingest(db, SESSION_CYPHER, session_rows, "Session")
     _ingest(db, PERSON_CYPHER, person_rows, "Person")
     _ingest(db, COMMITTEE_CYPHER, committee_rows, "Committee")
     _ingest(db, DOCUMENT_CYPHER, doc_rows, "Document")
@@ -611,6 +695,9 @@ def main():
     _ingest(db, VOTED_REL, vote_rows, "VOTED")
     _ingest(db, HAS_ACTION_REL, action_rels, "HAS_ACTION")
     _ingest(db, HAS_TOPIC_REL, topic_rels, "HAS_TOPIC")
+    _ingest(db, IN_STATE_REL, in_state_rels, "IN_STATE")
+    _ingest(db, IN_SESSION_REL, in_session_rels, "IN_SESSION")
+    _ingest(db, HAS_SESSION_REL, has_session_rels, "HAS_SESSION")
 
     db.close()
     # Total success!

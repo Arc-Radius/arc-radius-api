@@ -50,6 +50,7 @@ METADATA_CYPHER = """
 UNWIND $chunk_ids AS cid
 MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk {chunk_id: cid})
 MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
+OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)
 
 RETURN c.chunk_id AS chunk_id,
        c.section_path AS section_path,
@@ -57,7 +58,7 @@ RETURN c.chunk_id AS chunk_id,
        d.url AS doc_url,
        d.document_desc AS doc_desc,
        b.bill_pk AS bill_pk,
-       b.state AS state,
+       coalesce(b.state, s.code) AS state,
        b.bill_number AS bill_number,
        b.title AS title,
        b.description AS description,

@@ -130,6 +130,17 @@ def strip_html(html):
     return text
 
 
+def normalize_state_code(state):
+    """Normalize to uppercase two-letter state code when possible."""
+    letters = re.sub(r"[^A-Za-z]", "", state or "").upper()
+    return letters[:2] if len(letters) >= 2 else ""
+
+
+def normalize_session_id(session_id):
+    """Normalize session id as a stripped string."""
+    return str(session_id or "").strip()
+
+
 # ─── Chunking ─────────────────────────────────────────────
 
 def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
@@ -233,10 +244,14 @@ def write_bill_to_neo4j(driver, bill, chunks):
       (Chunk {bill_id, index, text, embedding})
     """
     with driver.session() as session:
+        state_code = normalize_state_code(bill.get("state", ""))
+        session_id = normalize_session_id(bill.get("session_id", ""))
+        session_pk = f"{state_code}:{session_id}" if state_code and session_id else ""
         # Create/update Bill node
         session.run("""
             MERGE (b:Bill {bill_id: $bill_id})
             SET b.state = $state,
+                b.session_id = $session_id,
                 b.bill_number = $bill_number,
                 b.title = $title,
                 b.description = $description,
@@ -252,6 +267,7 @@ def write_bill_to_neo4j(driver, bill, chunks):
         """, {
             "bill_id": str(bill.get("bill_id", "")),
             "state": bill.get("state", ""),
+            "session_id": bill.get("session_id", ""),
             "bill_number": bill.get("bill_number", ""),
             "title": bill.get("title", ""),
             "description": bill.get("description", ""),
@@ -264,6 +280,37 @@ def write_bill_to_neo4j(driver, bill, chunks):
             "sponsor_names": bill.get("sponsor_names", ""),
             "primary_sponsor": bill.get("primary_sponsor", ""),
         })
+
+        # Keep State node + Bill state relationship aligned with bill.state
+        if state_code:
+            session.run("""
+                MERGE (s:State {code: $state_code})
+                WITH s
+                MATCH (b:Bill {bill_id: $bill_id})
+                MERGE (b)-[:IN_STATE]->(s)
+            """, {
+                "state_code": state_code,
+                "bill_id": str(bill.get("bill_id", "")),
+            })
+
+        # Connect bill/state to session when session_id is available
+        if session_pk:
+            session.run("""
+                MERGE (sn:Session {session_pk: $session_pk})
+                SET sn.session_id = $session_id,
+                    sn.state_code = $state_code
+                WITH sn
+                MATCH (b:Bill {bill_id: $bill_id})
+                MERGE (b)-[:IN_SESSION]->(sn)
+                WITH sn
+                MATCH (s:State {code: $state_code})
+                MERGE (s)-[:HAS_SESSION]->(sn)
+            """, {
+                "session_pk": session_pk,
+                "session_id": session_id,
+                "state_code": state_code,
+                "bill_id": str(bill.get("bill_id", "")),
+            })
 
         # Delete old chunks (in case bill was updated)
         session.run("""
