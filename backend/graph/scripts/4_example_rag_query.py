@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from graph.api.query.formatting import format_context_block
-from graph.api.query import graph_rag_query
+from graph.src.query.formatting import format_context_block
+from graph.src.query import graph_rag_query
 
 DEFAULT_QUERY = "How does Texas compare to other states in terms of handling transgender athletes in school sports?"
 

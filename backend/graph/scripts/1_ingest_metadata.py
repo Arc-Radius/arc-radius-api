@@ -2,7 +2,7 @@
 Ingest bill metadata and relational data from LegiScan bulk CSVs into Neo4j. Filter to matched bills from EDA matched_lgbtq_bills.csv
 """
 
-from graph.api.neo4j_client import Neo4j
+from graph.src.neo4j_client import Neo4j
 import ast
 import csv
 import re
