@@ -4,7 +4,7 @@ up:
 down:
 	docker compose down
 
-export PYTHONPATH := $(CURDIR)
+export PYTHONPATH := $(CURDIR)/..
 
 schema:
 	python scripts/run_schema.py
