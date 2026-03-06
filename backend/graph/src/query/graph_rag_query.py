@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from graph.api.query.formatting import build_context
-from graph.api.embed import embed_query
-from graph.api.neo4j_client import Neo4j
+from graph.src.query.formatting import build_context
+from graph.src.embed import embed_query
+from graph.src.neo4j_client import Neo4j
 
 # seed query to find 20 most relevant chunks
 SEED_CYPHER = """

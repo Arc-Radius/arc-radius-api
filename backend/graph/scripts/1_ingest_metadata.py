@@ -14,16 +14,14 @@ load_dotenv()
 
 
 # paths and constants
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 # path to matched bills CSV
 MATCHED_CSV = (
-    Path(__file__).resolve(
-    ).parents[1] / ".." / "datasources" / "final-outputs" / "matched_lgbtq_bills.csv"
+    REPO_ROOT / "datasources" / "final-outputs" / "matched_lgbtq_bills.csv"
 )
 # path to root of bulk CSV directory
-BULK_CSV_ROOT = (
-    Path(__file__).resolve().parents[1] /
-    ".." / "datasources" / "legiscan-bulk-csv"
-)
+BULK_CSV_ROOT = REPO_ROOT / "datasources" / "legiscan-bulk-csv"
 
 # required files in each bulk CSV directory
 REQUIRED_FILES = [
