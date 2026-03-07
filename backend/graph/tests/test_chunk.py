@@ -12,7 +12,7 @@ from graph.src.extract_text import extract_elements
 
 # default to one example bill
 DEFAULT = (
-    Path(__file__).resolve().parents[2]
+    Path(__file__).resolve().parents[3]
     / "datasources"
     / "legiscan-bill-text"
     / "bill-text"
@@ -43,9 +43,9 @@ def main():
     for i, ch in enumerate(chunks):
         section = ch["heading"] or "(no section path)"
         print(f"\n--- chunk {i} | {section} ---")
-        print(ch["text"][:300])
-        if len(ch["text"]) > 300:
-            print(f"... ({len(ch['text']) - 300} more chars)")
+        print(ch["text"])
+        # if len(ch["text"]) > 300:
+        #     print(f"... ({len(ch['text']) - 300} more chars)")
 
 
 if __name__ == "__main__":
