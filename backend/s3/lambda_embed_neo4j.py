@@ -38,11 +38,20 @@ import csv
 import time
 import base64
 import re
+import sys
+from pathlib import Path
 from datetime import datetime, timezone
 from io import StringIO
 
 import boto3
 import requests
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from graph.api.chunking import make_chunks
+from unstructured.partition.text import partition_text
 
 # ─── Config ────────────────────────────────────────────────
 BUCKET = os.environ.get("BUCKET", "arc-radius-s3-bucket")
@@ -58,7 +67,7 @@ USE_NEO4J = os.environ.get("USE_NEO4J", "false").lower() == "true"
 API_URL = "https://api.legiscan.com/"
 TO_EMBED_PREFIX = "processed/to-embed/"
 DONE_PREFIX = "processed/to-embed/done/"
-CHUNK_SIZE = 500  # characters per chunk
+CHUNK_SIZE = 500  # max chars per chunk
 CHUNK_OVERLAP = 50  # overlap between chunks
 
 s3 = boto3.client("s3", region_name=REGION)
@@ -130,43 +139,44 @@ def strip_html(html):
     return text
 
 
+def normalize_state_code(state):
+    """Normalize to uppercase two-letter state code when possible."""
+    letters = re.sub(r"[^A-Za-z]", "", state or "").upper()
+    return letters[:2] if len(letters) >= 2 else ""
+
+
+def normalize_session_id(session_id):
+    """Normalize session id as a stripped string."""
+    return str(session_id or "").strip()
+
+
 # ─── Chunking ─────────────────────────────────────────────
 
 def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     """
-    Split text into overlapping chunks.
-    Returns list of {"text": ..., "index": ...}
+    Chunk with graph/api/chunking.py and return
+    [{"text": ..., "index": ...}, ...]
     """
     if not text or len(text) < 50:
         return []
 
-    chunks = []
-    start = 0
-    index = 0
+    elements = partition_text(text=text)
+    graph_chunks = make_chunks(
+        elements,
+        max_characters=chunk_size,
+        new_after_n_chars=max(int(chunk_size * 0.85), 1),
+        overlap=overlap,
+        combine_under=max(int(chunk_size * 0.5), 1),
+    )
 
-    while start < len(text):
-        end = start + chunk_size
-
-        # Try to break at a sentence boundary
-        if end < len(text):
-            # Look for sentence end near the chunk boundary
-            for sep in [". ", ".\n", ";\n", "\n\n"]:
-                last_sep = text[start:end].rfind(sep)
-                if last_sep > chunk_size * 0.5:
-                    end = start + last_sep + len(sep)
-                    break
-
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append({
-                "text": chunk,
-                "index": index,
-            })
-            index += 1
-
-        start = end - overlap
-
-    return chunks
+    return [
+        {
+            "text": ch.get("text", "").strip(),
+            "index": idx,
+        }
+        for idx, ch in enumerate(graph_chunks)
+        if ch.get("text", "").strip()
+    ]
 
 
 # ─── Bedrock Embeddings ───────────────────────────────────
@@ -233,10 +243,14 @@ def write_bill_to_neo4j(driver, bill, chunks):
       (Chunk {bill_id, index, text, embedding})
     """
     with driver.session() as session:
+        state_code = normalize_state_code(bill.get("state", ""))
+        session_id = normalize_session_id(bill.get("session_id", ""))
+        session_pk = f"{state_code}:{session_id}" if state_code and session_id else ""
         # Create/update Bill node
         session.run("""
             MERGE (b:Bill {bill_id: $bill_id})
             SET b.state = $state,
+                b.session_id = $session_id,
                 b.bill_number = $bill_number,
                 b.title = $title,
                 b.description = $description,
@@ -252,6 +266,7 @@ def write_bill_to_neo4j(driver, bill, chunks):
         """, {
             "bill_id": str(bill.get("bill_id", "")),
             "state": bill.get("state", ""),
+            "session_id": bill.get("session_id", ""),
             "bill_number": bill.get("bill_number", ""),
             "title": bill.get("title", ""),
             "description": bill.get("description", ""),
@@ -264,6 +279,37 @@ def write_bill_to_neo4j(driver, bill, chunks):
             "sponsor_names": bill.get("sponsor_names", ""),
             "primary_sponsor": bill.get("primary_sponsor", ""),
         })
+
+        # Keep State node + Bill state relationship aligned with bill.state
+        if state_code:
+            session.run("""
+                MERGE (s:State {code: $state_code})
+                WITH s
+                MATCH (b:Bill {bill_id: $bill_id})
+                MERGE (b)-[:IN_STATE]->(s)
+            """, {
+                "state_code": state_code,
+                "bill_id": str(bill.get("bill_id", "")),
+            })
+
+        # Connect bill/state to session when session_id is available
+        if session_pk:
+            session.run("""
+                MERGE (sn:Session {session_pk: $session_pk})
+                SET sn.session_id = $session_id,
+                    sn.state_code = $state_code
+                WITH sn
+                MATCH (b:Bill {bill_id: $bill_id})
+                MERGE (b)-[:IN_SESSION]->(sn)
+                WITH sn
+                MATCH (s:State {code: $state_code})
+                MERGE (s)-[:HAS_SESSION]->(sn)
+            """, {
+                "session_pk": session_pk,
+                "session_id": session_id,
+                "state_code": state_code,
+                "bill_id": str(bill.get("bill_id", "")),
+            })
 
         # Delete old chunks (in case bill was updated)
         session.run("""

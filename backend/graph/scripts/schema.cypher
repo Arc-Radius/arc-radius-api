@@ -22,12 +22,22 @@ FOR (a:Action) REQUIRE a.action_id IS UNIQUE;
 CREATE CONSTRAINT topic_name IF NOT EXISTS
 FOR (t:Topic) REQUIRE t.name IS UNIQUE;
 
+CREATE CONSTRAINT state_code IF NOT EXISTS
+FOR (s:State) REQUIRE s.code IS UNIQUE;
+
+CREATE CONSTRAINT session_pk IF NOT EXISTS
+FOR (sn:Session) REQUIRE sn.session_pk IS UNIQUE;
+
 CREATE VECTOR INDEX chunkEmbeddingIndex IF NOT EXISTS
 FOR (c:Chunk)
 ON (c.embedding)
 OPTIONS {
   indexConfig: {
-    `vector.dimensions`: 768,
+    `vector.dimensions`: 1024,
     `vector.similarity_function`: 'cosine'
   }
 };
+
+CREATE FULLTEXT INDEX chunkTextIndex IF NOT EXISTS
+FOR (c:Chunk)
+ON EACH [c.text];

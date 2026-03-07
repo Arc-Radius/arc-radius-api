@@ -1,51 +1,76 @@
 import re
 
+from unstructured.chunking.basic import chunk_elements
 from unstructured.chunking.title import chunk_by_title
 
-# regex for legal headings
-LEGAL_HEADING_RE = re.compile(
-    r"^(Sec\.\s.+|SECTION\s.+|§+\s*.+|ARTICLE\s.+|PART\s.+|TITLE\s.+|CHAPTER\s.+|SUBDIVISION\s.+)$",
-    re.MULTILINE | re.IGNORECASE,
-)
-
-# regex for line numbers (in many bills at the start of lines / in margins)
+LEGAL_HEADING_RE = re.compile(r"^(Sec\.\s.+|SECTION\s.+|§+\s*.+)$", re.MULTILINE | re.IGNORECASE)
 LINE_NUMBER_RE = re.compile(r"^\d{1,3}$")
+SECTION_RE = re.compile(r'^\s*["“]?\s*(?:Sec\.|Section|SECTION|§)\s+', re.IGNORECASE)
 
-# subdivision markers like (a), (1), (A) that signal body text
-_SUBDIV_RE = re.compile(r"\s+\([a-z0-9]\)\s", re.IGNORECASE)
 
-# filter out margin line numbers and other PDF extraction artifacts
-def _is_noise(element) -> bool:
-    text = getattr(element, "text", None)
-    if not text:
+def _is_noise_text(text: str) -> bool:
+    compact = re.sub(r"\s+", " ", text).strip()
+    if not compact:
         return True
-    text = text.strip()
-    if not text:
-        return True
-    if LINE_NUMBER_RE.match(text):
+    if LINE_NUMBER_RE.match(compact):
         return True
     return False
 
-# trim heading line to just the section designator
+
+def _is_noise(element) -> bool:
+    text = getattr(element, "text", None) or ""
+    return _is_noise_text(text)
+
+
 def _trim_heading(raw: str, max_len: int = 80) -> str:
-    m = _SUBDIV_RE.search(raw)
-    if m:
-        raw = raw[: m.start()]
+    raw = " ".join(raw.split())
     if len(raw) > max_len:
-        dot = raw.rfind(". ", 0, max_len)
-        if dot > 20:
-            raw = raw[: dot + 1]
-        else:
-            raw = raw[:max_len].rstrip() + "…"
+        raw = raw[:max_len].rstrip() + "..."
     return raw.rstrip()
 
 
-# find all legal headings in chunk text
 def _extract_headings(text: str) -> list[str]:
     return [_trim_heading(m.group(0).strip()) for m in LEGAL_HEADING_RE.finditer(text)]
 
 
-# make chunks from elements
+def _detect_section_heading(text: str) -> str | None:
+    clean = re.sub(r"\s+", " ", text).strip()
+    if not clean:
+        return None
+    if SECTION_RE.match(clean):
+        return _trim_heading(clean, max_len=160)
+    return None
+
+
+def _fallback_chunks_by_title(
+    cleaned_elements: list,
+    max_characters: int,
+    new_after_n_chars: int,
+    overlap: int,
+    combine_under: int,
+) -> list[dict]:
+    chunks = chunk_by_title(
+        cleaned_elements,
+        max_characters=max_characters,
+        new_after_n_chars=new_after_n_chars,
+        overlap=overlap,
+        combine_text_under_n_chars=combine_under,
+    )
+    result = []
+    last_section = None
+    for chunk in chunks:
+        headings = _extract_headings(chunk.text)
+        if headings:
+            last_section = " > ".join(headings)
+        result.append({
+            "heading": last_section,
+            "text": chunk.text,
+            "start_char": None,
+            "end_char": None,
+        })
+    return result
+
+
 def make_chunks(
     elements: list,
     max_characters: int = 4000,
@@ -55,31 +80,49 @@ def make_chunks(
 ) -> list[dict]:
     cleaned = [e for e in elements if not _is_noise(e)]
 
-    # use unstructured's chunk_by_title to make chunks
-    chunks = chunk_by_title(
-        cleaned,
-        max_characters=max_characters,
-        new_after_n_chars=new_after_n_chars,
-        overlap=overlap,
-        combine_text_under_n_chars=combine_under,
-    )
+    sections: list[tuple[str | None, list]] = []
+    current_heading: str | None = None
+    current_elements: list = []
+    detected_sections = 0
 
-    # create chunk rows
+    for element in cleaned:
+        text = (getattr(element, "text", None) or "").strip()
+        heading = _detect_section_heading(text)
+        if heading:
+            if current_elements:
+                sections.append((current_heading, current_elements))
+            current_heading = heading
+            current_elements = [element]
+            detected_sections += 1
+            continue
+        current_elements.append(element)
+
+    if current_elements:
+        sections.append((current_heading, current_elements))
+
+    # Safety fallback for non-legislative docs with no detectable sections.
+    if detected_sections == 0:
+        return _fallback_chunks_by_title(
+            cleaned,
+            max_characters=max_characters,
+            new_after_n_chars=new_after_n_chars,
+            overlap=overlap,
+            combine_under=combine_under,
+        )
+
     result = []
-    # keep track of last section
-    last_section = None
-    # loop through chunks
-    for chunk in chunks:
-        # extract headings from chunk text
-        headings = _extract_headings(chunk.text)
-        if headings:
-            # join headings with " > "
-            last_section = " > ".join(headings)
-        # add chunk to result
-        result.append({
-            "heading": last_section,
-            "text": chunk.text,
-            "start_char": None,
-            "end_char": None,
-        })
+    for heading, section_elements in sections:
+        section_chunks = chunk_elements(
+            section_elements,
+            max_characters=max_characters,
+            new_after_n_chars=new_after_n_chars,
+            overlap=overlap,
+        )
+        for chunk in section_chunks:
+            result.append({
+                "heading": heading,
+                "text": chunk.text,
+                "start_char": None,
+                "end_char": None,
+            })
     return result

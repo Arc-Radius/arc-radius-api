@@ -1,10 +1,13 @@
 up:
-	docker compose up -d
+	docker compose --env-file ../.env up -d
 
 down:
-	docker compose down
+	docker compose --env-file ../.env down
 
-export PYTHONPATH := $(CURDIR)
+down-v:
+	docker compose --env-file ../.env down -v
+
+export PYTHONPATH := $(CURDIR)/..
 
 schema:
 	python scripts/run_schema.py
@@ -29,8 +32,8 @@ setup: up wait schema
 pipeline: ingest extract embed
 
 reset:
-	docker compose down -v
-	docker compose up -d
+	docker compose --env-file ../.env down -v
+	docker compose --env-file ../.env up -d
 	@echo "Waiting for Neo4j..."
 	@sleep 15
 	python scripts/run_schema.py

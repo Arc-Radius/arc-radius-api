@@ -11,7 +11,7 @@ from graph.api.extract_text import extract_text_from_file
 
 # default to one example bill
 DEFAULT = (
-    Path(__file__).resolve().parents[2]
+    Path(__file__).resolve().parents[3]
     / "datasources"
     / "legiscan-bill-text"
     / "bill-text"

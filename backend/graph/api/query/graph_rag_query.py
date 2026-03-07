@@ -1,48 +1,51 @@
-"""GraphRAG retrieval query pipeline: seed -> expand -> rerank."""
+"""GraphRAG retrieval query pipeline built on neo4j-graphrag retrievers."""
 
 from __future__ import annotations
 
+import logging
+import os
+from typing import Any
+
+from neo4j_graphrag.retrievers import HybridCypherRetriever, VectorCypherRetriever
+from neo4j_graphrag.types import RetrieverResultItem
+
+from graph.api.query.bedrock_embedder import BedrockEmbedder
 from graph.api.query.formatting import build_context
-from graph.api.embed import embed_query
 from graph.api.neo4j_client import Neo4j
 
-# seed query to find 20 most relevant chunks
-SEED_CYPHER = """
-CALL db.index.vector.queryNodes('chunkEmbeddingIndex', 20, $qvec)
-YIELD node, score
-RETURN node.chunk_id AS chunk_id, node.text AS text, score
-ORDER BY score DESC
-"""
+logger = logging.getLogger(__name__)
 
-# expand query: sibling chunks (same doc, +/-2 index) + topic-neighbor chunks
-EXPAND_CYPHER = """
-MATCH (seed:Chunk)
-WHERE seed.chunk_id IN $seed_ids
+DEFAULT_RETRIEVER_MODE = "vector"
+VECTOR_INDEX_NAME = "chunkEmbeddingIndex"
+FULLTEXT_INDEX_NAME = "chunkTextIndex"
+EFFECTIVE_SEARCH_RATIO = 4
+HYBRID_RANKER = "naive"
+
+RETRIEVAL_CYPHER = """
+WITH node AS seed, score AS seed_score
 MATCH (d:Document)-[:HAS_CHUNK]->(seed)
 MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
-
 OPTIONAL MATCH (d)-[:HAS_CHUNK]->(sib:Chunk)
 WHERE abs(sib.chunk_index - seed.chunk_index) <= 2
-
-WITH seed, b, collect(DISTINCT sib.chunk_id) AS siblings
-
-OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(ob:Bill)
+WITH seed, seed_score, b, collect(DISTINCT sib) AS sibling_nodes
+OPTIONAL MATCH (b)-[:HAS_TOPIC]->(:Topic)<-[:HAS_TOPIC]-(ob:Bill)
 WHERE ob <> b
-OPTIONAL MATCH (ob)-[:HAS_DOCUMENT]->(od:Document)-[:HAS_CHUNK]->(tc:Chunk)
-
-WITH siblings, collect(DISTINCT tc.chunk_id)[..50] AS topic_chunks
-
-RETURN siblings, topic_chunks
-"""
-
-# rerank query to find 20 most relevant chunks
-RERANK_CYPHER = """
-CALL db.index.vector.queryNodes('chunkEmbeddingIndex', 400, $qvec)
-YIELD node, score
-WHERE node.chunk_id IN $candidate_ids
-RETURN node.chunk_id AS chunk_id, node.text AS text, score
+OPTIONAL MATCH (ob)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(tc:Chunk)
+WITH seed, seed_score, b, sibling_nodes, collect(DISTINCT tc)[..50] AS topic_nodes
+OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)<-[:IN_STATE]-(sb:Bill)
+WHERE sb <> b
+OPTIONAL MATCH (sb)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(sc:Chunk)
+WITH seed, seed_score, sibling_nodes, topic_nodes, collect(DISTINCT sc)[..50] AS state_nodes
+WITH [seed]
+     + sibling_nodes
+     + [n IN topic_nodes WHERE n IS NOT NULL]
+     + [n IN state_nodes WHERE n IS NOT NULL] AS expanded_nodes,
+     seed_score
+UNWIND expanded_nodes AS node
+WITH node, max(seed_score) AS score
+RETURN node, score
 ORDER BY score DESC
-LIMIT 20
+LIMIT $top_k
 """
 
 # metadata query to get metadata for the chunks
@@ -50,6 +53,7 @@ METADATA_CYPHER = """
 UNWIND $chunk_ids AS cid
 MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk {chunk_id: cid})
 MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
+OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)
 
 RETURN c.chunk_id AS chunk_id,
        c.section_path AS section_path,
@@ -57,7 +61,7 @@ RETURN c.chunk_id AS chunk_id,
        d.url AS doc_url,
        d.document_desc AS doc_desc,
        b.bill_pk AS bill_pk,
-       b.state AS state,
+       coalesce(b.state, s.code) AS state,
        b.bill_number AS bill_number,
        b.title AS title,
        b.description AS description,
@@ -74,9 +78,85 @@ RETURN c.chunk_id AS chunk_id,
        b.state_link AS state_link
 """
 
-# graph RAG query pipeline
-# run seed -> expand -> rerank pipeline
-# return ranked chunks, metadata map, and context string
+
+def _record_formatter(record: Any) -> RetrieverResultItem:
+    node = record.get("node")
+    score = record.get("score")
+    if node is None:
+        return RetrieverResultItem(content={"chunk_id": None, "text": ""}, metadata={"score": score})
+    return RetrieverResultItem(
+        content={
+            "chunk_id": node.get("chunk_id"),
+            "text": node.get("text", ""),
+        },
+        metadata={"score": score},
+    )
+
+
+def _extract_ranked(result: Any) -> list[dict]:
+    ranked: list[dict] = []
+    for item in result.items:
+        content = item.content or {}
+        chunk_id = content.get("chunk_id")
+        if not chunk_id:
+            continue
+        ranked.append(
+            {
+                "chunk_id": chunk_id,
+                "text": content.get("text", ""),
+                "score": float((item.metadata or {}).get("score", 0.0)),
+            }
+        )
+    return ranked
+
+
+def _run_vector_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
+    retriever = VectorCypherRetriever(
+        db.driver,
+        VECTOR_INDEX_NAME,
+        retrieval_query=RETRIEVAL_CYPHER,
+        embedder=BedrockEmbedder(),
+        result_formatter=_record_formatter,
+    )
+    result = retriever.search(
+        query_text=query,
+        top_k=max(top, 1),
+        effective_search_ratio=EFFECTIVE_SEARCH_RATIO,
+    )
+    return _extract_ranked(result)
+
+
+def _run_hybrid_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
+    retriever = HybridCypherRetriever(
+        db.driver,
+        VECTOR_INDEX_NAME,
+        FULLTEXT_INDEX_NAME,
+        retrieval_query=RETRIEVAL_CYPHER,
+        embedder=BedrockEmbedder(),
+        result_formatter=_record_formatter,
+    )
+    result = retriever.search(
+        query_text=query,
+        top_k=max(top, 1),
+        effective_search_ratio=EFFECTIVE_SEARCH_RATIO,
+        ranker=HYBRID_RANKER,
+    )
+    return _extract_ranked(result)
+
+
+def _search_ranked(db: Neo4j, query: str, top: int) -> list[dict]:
+    mode = os.getenv("RAG_RETRIEVER_MODE", DEFAULT_RETRIEVER_MODE).strip().lower()
+    if mode == "hybrid":
+        try:
+            return _run_hybrid_retrieval(db, query, top)
+        except Exception:
+            logger.exception("Hybrid retrieval failed, falling back to vector retriever")
+            return _run_vector_retrieval(db, query, top)
+    if mode != "vector":
+        logger.warning("Unknown RAG_RETRIEVER_MODE=%r, using vector retriever", mode)
+    return _run_vector_retrieval(db, query, top)
+
+
 def graph_rag_query(
     query: str, *, top: int = 10, db: Neo4j | None = None
 ) -> tuple[list[dict], dict[str, dict], str]:
@@ -85,24 +165,13 @@ def graph_rag_query(
         db = Neo4j()
 
     try:
-        qvec = embed_query(query)
-        # run seed query to find 20 most relevant chunks
-        seeds = db.run(SEED_CYPHER, qvec=qvec)
-        seed_ids = [s["chunk_id"] for s in seeds]
-        # run expand query to find sibling + topic-neighbor chunks
-        exp = db.run(EXPAND_CYPHER, seed_ids=seed_ids)
-        candidate_ids = set(seed_ids)
-        for r in exp:
-            candidate_ids.update(r.get("siblings") or [])
-            candidate_ids.update(r.get("topic_chunks") or [])
-        # run rerank query to find 20 most relevant chunks
-        ranked = db.run(RERANK_CYPHER, qvec=qvec, candidate_ids=list(candidate_ids))
-        # get top ranked chunks
+        ranked = _search_ranked(db, query, top)
         top_ranked = ranked[:top]
         chunk_ids = [r["chunk_id"] for r in top_ranked]
+        if not chunk_ids:
+            return top_ranked, {}, ""
         meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
         meta = {m["chunk_id"]: m for m in meta_rows}
-        # use formatting module to build context string
         context = build_context(top_ranked, meta)
         return top_ranked, meta, context
     finally:

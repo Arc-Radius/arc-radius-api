@@ -8,13 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-BILL_TEXT_DIR = (
-    Path(__file__).resolve().parents[1]
-    / ".."
-    / "datasources"
-    / "legiscan-bill-text"
-    / "bill-text"
-)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+BILL_TEXT_DIR = REPO_ROOT / "datasources" / "legiscan-bill-text" / "bill-text"
 
 # fetch documents that have no chunks
 FETCH_QUERY = """
