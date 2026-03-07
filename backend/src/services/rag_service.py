@@ -1,4 +1,4 @@
-from graph.src.query import graph_rag_query
+from graph.api.query import graph_rag_query
 from bedrock.bedrock_client import generate
 
 SYSTEM_PROMPT = """You are a helpful, affirming assistant for LGBTQ+ youth 

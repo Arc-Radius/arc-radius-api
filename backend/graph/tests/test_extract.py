@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from graph.src.extract_text import extract_text_from_file
+from graph.api.extract_text import extract_text_from_file
 
 # default to one example bill
 DEFAULT = (

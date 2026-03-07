@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from graph.src.embed import embed_texts
-from graph.src.neo4j_client import Neo4j
+from graph.api.embed import embed_texts
+from graph.api.neo4j_client import Neo4j
 
 BATCH_SIZE = 100
 

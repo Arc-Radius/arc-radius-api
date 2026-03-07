@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from graph.src.chunking import make_chunks
-from graph.src.extract_text import extract_elements
+from graph.api.chunking import make_chunks
+from graph.api.extract_text import extract_elements
 
 BASE_DIR = (
     Path(__file__).resolve().parents[3]

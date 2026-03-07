@@ -50,7 +50,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from graph.src.chunking import make_chunks
+from graph.api.chunking import make_chunks
 from unstructured.partition.text import partition_text
 
 # ─── Config ────────────────────────────────────────────────
@@ -154,7 +154,7 @@ def normalize_session_id(session_id):
 
 def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     """
-    Chunk with graph/src/chunking.py and return
+    Chunk with graph/api/chunking.py and return
     [{"text": ..., "index": ...}, ...]
     """
     if not text or len(text) < 50:

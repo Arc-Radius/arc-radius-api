@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graph.src.embed import embed_query
+from graph.api.embed import embed_query
 
 # Adapter that satisfies neo4j-graphrag embedder protocol.
 class BedrockEmbedder:
