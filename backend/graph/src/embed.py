@@ -1,10 +1,22 @@
-from sentence_transformers import SentenceTransformer
+import os
 
-_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+from bedrock.bedrock_client import embed_texts as bedrock_embed_texts
+
+MODEL_ID = os.getenv("BEDROCK_EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
+RAW_DIMS = os.getenv("BEDROCK_EMBED_DIMS")
+RAW_NORMALIZE = os.getenv("BEDROCK_EMBED_NORMALIZE")
+
+DIMS = int(RAW_DIMS) if RAW_DIMS else None
+NORMALIZE = None if RAW_NORMALIZE is None else RAW_NORMALIZE.lower() == "true"
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    return _model.encode(texts, normalize_embeddings=True, batch_size=32).tolist()
+    return bedrock_embed_texts(
+        texts,
+        model_id=MODEL_ID,
+        dimensions=DIMS,
+        normalize=NORMALIZE,
+    )
 
 
 def embed_query(q: str) -> list[float]:
