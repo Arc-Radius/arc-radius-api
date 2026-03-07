@@ -37,3 +37,7 @@ OPTIONS {
     `vector.similarity_function`: 'cosine'
   }
 };
+
+CREATE FULLTEXT INDEX chunkTextIndex IF NOT EXISTS
+FOR (c:Chunk)
+ON EACH [c.text];
