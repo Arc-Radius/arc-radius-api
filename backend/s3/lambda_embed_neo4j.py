@@ -38,11 +38,20 @@ import csv
 import time
 import base64
 import re
+import sys
+from pathlib import Path
 from datetime import datetime, timezone
 from io import StringIO
 
 import boto3
 import requests
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from graph.src.chunking import make_chunks
+from unstructured.partition.text import partition_text
 
 # ─── Config ────────────────────────────────────────────────
 BUCKET = os.environ.get("BUCKET", "arc-radius-s3-bucket")
@@ -58,7 +67,7 @@ USE_NEO4J = os.environ.get("USE_NEO4J", "false").lower() == "true"
 API_URL = "https://api.legiscan.com/"
 TO_EMBED_PREFIX = "processed/to-embed/"
 DONE_PREFIX = "processed/to-embed/done/"
-CHUNK_SIZE = 500  # characters per chunk
+CHUNK_SIZE = 500  # max chars per chunk
 CHUNK_OVERLAP = 50  # overlap between chunks
 
 s3 = boto3.client("s3", region_name=REGION)
@@ -145,39 +154,29 @@ def normalize_session_id(session_id):
 
 def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     """
-    Split text into overlapping chunks.
-    Returns list of {"text": ..., "index": ...}
+    Chunk with graph/src/chunking.py and return
+    [{"text": ..., "index": ...}, ...]
     """
     if not text or len(text) < 50:
         return []
 
-    chunks = []
-    start = 0
-    index = 0
+    elements = partition_text(text=text)
+    graph_chunks = make_chunks(
+        elements,
+        max_characters=chunk_size,
+        new_after_n_chars=max(int(chunk_size * 0.85), 1),
+        overlap=overlap,
+        combine_under=max(int(chunk_size * 0.5), 1),
+    )
 
-    while start < len(text):
-        end = start + chunk_size
-
-        # Try to break at a sentence boundary
-        if end < len(text):
-            # Look for sentence end near the chunk boundary
-            for sep in [". ", ".\n", ";\n", "\n\n"]:
-                last_sep = text[start:end].rfind(sep)
-                if last_sep > chunk_size * 0.5:
-                    end = start + last_sep + len(sep)
-                    break
-
-        chunk = text[start:end].strip()
-        if chunk:
-            chunks.append({
-                "text": chunk,
-                "index": index,
-            })
-            index += 1
-
-        start = end - overlap
-
-    return chunks
+    return [
+        {
+            "text": ch.get("text", "").strip(),
+            "index": idx,
+        }
+        for idx, ch in enumerate(graph_chunks)
+        if ch.get("text", "").strip()
+    ]
 
 
 # ─── Bedrock Embeddings ───────────────────────────────────
