@@ -2,6 +2,7 @@
 Single file chunking test.
 """
 
+import random
 import sys
 from pathlib import Path
 
@@ -10,19 +11,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from graph.src.chunking import make_chunks
 from graph.src.extract_text import extract_elements
 
-# default to one example bill
-DEFAULT = (
+BASE_DIR = (
     Path(__file__).resolve().parents[3]
     / "datasources"
     / "legiscan-bill-text"
     / "bill-text"
-    / "AK_1398089_1796_HB17_2232246.pdf"
 )
 
 
+def pick_random_bill_text() -> Path:
+    candidates = [
+        p for p in BASE_DIR.iterdir()
+        if p.is_file() and p.suffix.lower() in {".pdf", ".html", ".htm", ".doc"}
+    ]
+    if not candidates:
+        raise FileNotFoundError(f"No bill text files found in: {BASE_DIR}")
+    return random.choice(candidates)
+
+
 def main():
-    # get bill path from command line argument or use the default
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT
+    # get bill path from command line argument or pick a random one
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else pick_random_bill_text()
     if not path.exists():
         print(f"File not found: {path}")
         sys.exit(1)
