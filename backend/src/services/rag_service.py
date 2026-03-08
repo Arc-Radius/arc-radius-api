@@ -140,14 +140,14 @@ def query_and_generate(query: str, top: int = 10):
 
 def query_and_generate_task(
     task: str,
-    bill_pk: int | str,
+    bill_pk: str,
 ):
     """Task-based bill generation handler using all chunks from one bill."""
     query = task
     if task == "bill_related":
-        ranked, meta, context = graph_related_bills_query_for_bill(int(bill_pk))
+        ranked, meta, context = graph_related_bills_query_for_bill(bill_pk)
     else:
-        ranked, meta, context = graph_rag_query_for_bill(int(bill_pk))
+        ranked, meta, context = graph_rag_query_for_bill(bill_pk)
     prompt = _build_task_prompt(task=task, query=query, context=context)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)

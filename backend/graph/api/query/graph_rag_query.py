@@ -187,14 +187,14 @@ def graph_rag_query(
 
 
 def graph_rag_query_for_bill(
-    bill_pk: int, *, db: Neo4j | None = None
+    bill_pk: str, *, db: Neo4j | None = None
 ) -> tuple[list[dict], dict[str, dict], str]:
     own_db = db is None
     if own_db:
         db = Neo4j()
 
     try:
-        ranked = db.run(BILL_CHUNKS_CYPHER, bill_pk=int(bill_pk))
+        ranked = db.run(BILL_CHUNKS_CYPHER, bill_pk=bill_pk)
         if not ranked:
             return [], {}, ""
         for row in ranked:
@@ -217,7 +217,7 @@ def _build_related_seed_query(current_ranked: list[dict], max_chunks: int = 3) -
 
 
 def graph_related_bills_query_for_bill(
-    bill_pk: int,
+    bill_pk: str,
     *,
     seed_chunk_count: int = 3,
     top: int = 30,
@@ -229,7 +229,7 @@ def graph_related_bills_query_for_bill(
         db = Neo4j()
 
     try:
-        current_ranked, _, _ = graph_rag_query_for_bill(int(bill_pk), db=db)
+        current_ranked, _, _ = graph_rag_query_for_bill(bill_pk, db=db)
         if not current_ranked:
             return [], {}, ""
 

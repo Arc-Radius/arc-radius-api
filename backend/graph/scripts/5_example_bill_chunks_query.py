@@ -14,7 +14,7 @@ from graph.api.query.formatting import format_context_block
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bill-pk", type=int, required=True)
+    parser.add_argument("--bill-pk", type=str, required=True)
     args = parser.parse_args()
 
     print(f"Bill PK: {args.bill_pk}\n")
