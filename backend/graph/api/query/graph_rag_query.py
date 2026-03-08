@@ -78,6 +78,13 @@ RETURN c.chunk_id AS chunk_id,
        b.state_link AS state_link
 """
 
+BILL_CHUNKS_CYPHER = """
+MATCH (b:Bill {bill_pk: $bill_pk})-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(c:Chunk)
+RETURN c.chunk_id AS chunk_id,
+       coalesce(c.text, "") AS text
+ORDER BY c.chunk_index ASC
+"""
+
 
 def _record_formatter(record: Any) -> RetrieverResultItem:
     node = record.get("node")
@@ -174,6 +181,30 @@ def graph_rag_query(
         meta = {m["chunk_id"]: m for m in meta_rows}
         context = build_context(top_ranked, meta)
         return top_ranked, meta, context
+    finally:
+        if own_db:
+            db.close()
+
+
+def graph_rag_query_for_bill(
+    bill_pk: int, *, db: Neo4j | None = None
+) -> tuple[list[dict], dict[str, dict], str]:
+    own_db = db is None
+    if own_db:
+        db = Neo4j()
+
+    try:
+        ranked = db.run(BILL_CHUNKS_CYPHER, bill_pk=int(bill_pk))
+        if not ranked:
+            return [], {}, ""
+        for row in ranked:
+            row["score"] = 1.0
+
+        chunk_ids = [r["chunk_id"] for r in ranked]
+        meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
+        meta = {m["chunk_id"]: m for m in meta_rows}
+        context = build_context(ranked, meta)
+        return ranked, meta, context
     finally:
         if own_db:
             db.close()
