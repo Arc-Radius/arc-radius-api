@@ -1,4 +1,4 @@
-from graph.api.query import graph_rag_query
+from graph.api.query import graph_rag_query, graph_rag_query_for_bill
 from bedrock.bedrock_client import generate
 
 SYSTEM_PROMPT = """
@@ -46,19 +46,39 @@ Grounding:
 - Explain using only information supported by the bill text.
 - If something is unclear, say so instead of guessing.
 """.strip()
-def query_and_generate(query: str, top: int = 10):
-    """Full RAG pipeline: query graph → build context → generate answer."""
-    ranked, meta, context = graph_rag_query(query, top=top)
-    prompt = (
-    "Use only the bill records below as evidence.\n\n"
-    f"Bill records:\n{context}\n\n"
-    f"User question:\n{query}\n\n"
-    "If evidence is missing, say what is missing."
-    )
 
-    answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
+TASK_PROMPTS = {
+    "bill_summary": """
+Role: You are a legislative explainer.
 
-    sources = [
+Task: Explain what this bill does.
+
+Rules:
+- Use only the information provided below.
+- Do not add outside knowledge.
+- Do not speculate.
+- Do not interpret intent.
+- Length: 3-5 sentences.
+- Be neutral and factual.
+""".strip(),
+    "bill_why_matters": """
+Role: You are a policy translator helping someone understand how a bill might affect daily life.
+
+Task: Explain why this bill could matter to an LGBTQ+ Young Adult.
+
+Requirements:
+- Focus on real-world impact.
+- Avoid exaggeration.
+- Avoid fear language.
+- Explain practical effects.
+- If impact is uncertain, clearly state that.
+- Length: 3-5 sentences.
+""".strip(),
+}
+
+
+def _build_sources(ranked, meta):
+    return [
         {
             "chunk_id": r["chunk_id"],
             "text": r["text"],
@@ -68,4 +88,51 @@ def query_and_generate(query: str, top: int = 10):
         for r in ranked
     ]
 
+
+def _build_default_prompt(query: str, context: str) -> str:
+    return (
+        "Use only the bill records below as evidence.\n\n"
+        f"Bill records:\n{context}\n\n"
+        f"User question:\n{query}\n\n"
+        "If evidence is missing, say what is missing."
+    )
+
+
+def _build_task_prompt(task: str, query: str, context: str) -> str:
+    if task not in TASK_PROMPTS:
+        raise ValueError(f"Unsupported generation task: {task}")
+
+    return (
+        f"{TASK_PROMPTS[task]}\n\n"
+        f"Bill records:\n{context}\n\n"
+        f"User request:\n{query}\n\n"
+        "If evidence is missing, say what is missing."
+    )
+
+
+def query_and_generate(query: str, top: int = 10):
+    """Full RAG pipeline: query graph → build context → generate answer."""
+    ranked, meta, context = graph_rag_query(query, top=top)
+    prompt = _build_default_prompt(query=query, context=context)
+
+    answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
+    sources = _build_sources(ranked, meta)
+
     return {"query": query, "answer": answer, "sources": sources}
+
+
+def query_and_generate_task(
+    task: str,
+    bill_pk: int | str,
+):
+    """Task-based bill generation handler using all chunks from one bill."""
+    query = task
+    ranked, meta, context = graph_rag_query_for_bill(int(bill_pk))
+    prompt = _build_task_prompt(task=task, query=query, context=context)
+
+    answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
+    sources = _build_sources(ranked, meta)
+    result = {"task": task, "query": query, "answer": answer, "sources": sources}
+    result["bill_pk"] = bill_pk
+
+    return result

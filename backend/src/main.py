@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from src.routers.bills import router as bills_router
+from src.routers.generation import router as generation_router
 from src.routers.limiter import limiter, limiter_router
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -9,6 +10,7 @@ app = FastAPI()
 
 # Register routers
 app.include_router(bills_router)
+app.include_router(generation_router)
 app.include_router(limiter_router)
 
 # Rate limiting middleware/handler
