@@ -106,6 +106,27 @@ def _build_sources(ranked, meta):
     ]
 
 
+def _build_sources_without_meta(ranked):
+    return [
+        {
+            "chunk_id": r["chunk_id"],
+            "text": r["text"],
+            "score": r["score"],
+        }
+        for r in ranked
+    ]
+
+
+def _build_shared_bill_meta(ranked, meta):
+    if not ranked:
+        return {}
+    first_chunk_id = ranked[0]["chunk_id"]
+    first_meta = dict(meta.get(first_chunk_id, {}))
+    first_meta.pop("chunk_id", None)
+    first_meta.pop("section_path", None)
+    return first_meta
+
+
 def _build_default_prompt(query: str, context: str) -> str:
     return (
         "Use only the bill records below as evidence.\n\n"
@@ -144,6 +165,7 @@ def query_and_generate_task(
 ):
     """Task-based bill generation handler using all chunks from one bill."""
     query = task
+    shared_bill_task = task in {"bill_summary", "bill_why_matters"}
     if task == "bill_related":
         ranked, meta, context = graph_related_bills_query_for_bill(bill_pk)
     else:
@@ -151,8 +173,10 @@ def query_and_generate_task(
     prompt = _build_task_prompt(task=task, query=query, context=context)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
-    sources = _build_sources(ranked, meta)
+    sources = _build_sources_without_meta(ranked) if shared_bill_task else _build_sources(ranked, meta)
     result = {"task": task, "query": query, "answer": answer, "sources": sources}
     result["bill_pk"] = bill_pk
+    if shared_bill_task:
+        result["bill_meta"] = _build_shared_bill_meta(ranked, meta)
 
     return result
