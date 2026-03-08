@@ -2,20 +2,25 @@
 Arc Radius — Classification Lambda
 ====================================
 Reads new/updated bill CSVs from the polling Lambda,
-classifies them, and appends LGBTQ+ matches to matched_lgbtq_bills.csv.
+classifies them for LGBTQ+ relevance and stance.
 
 Classification:
-  - Currently: heuristic keyword matching (your notebook 03 logic)
-  - Later: swap in SageMaker LegalBERT endpoint
+  - Currently: heuristic keyword matching (notebook 03 logic)
+  - Later: swap in SageMaker LegalBERT endpoint (USE_SAGEMAKER=true)
 
 Tracking:
   - classified_bills.json: {bill_id: change_hash} for ALL classified bills
     (both relevant and not relevant — so we don't re-classify them)
-  - matched_lgbtq_bills.csv: only the LGBTQ+ relevant bills
+
+Outputs:
+  - processed/classified/matches_{ts}.csv — LGBTQ+ matches only (triggers Lambda 3)
+  - Neo4j is the source of truth for matched bills (no S3 CSV append)
 
 Trigger:
-  - S3 event when new CSV lands in raw/legiscan-incremental/
-  - Or EventBridge schedule after polling Lambda
+  - S3 event: prefix raw/legiscan-incremental/, suffix .csv
+
+After reading:
+  - Moves input CSVs to raw/legiscan-classified/ (different prefix, no re-trigger)
 
 Deploy as a Lambda with:
   - Runtime: Python 3.14
@@ -46,35 +51,12 @@ USE_SAGEMAKER = os.environ.get("USE_SAGEMAKER", "false").lower() == "true"
 # S3 keys
 CLASSIFIED_KEY = "pipeline/metadata/classified_bills.json"
 INCREMENTAL_PREFIX = "raw/legiscan-incremental/"
-PROCESSED_PREFIX = "raw/legiscan-incremental/processed/"
-MATCHED_KEY = "processed/matched-bills/matched_lgbtq_bills.csv"
+ARCHIVE_PREFIX = "raw/legiscan-classified/"           # moved here after reading (no trigger)
+CLASSIFIED_OUTPUT_PREFIX = "processed/classified/"     # triggers Lambda 3
 
 s3 = boto3.client("s3", region_name=REGION)
 sm_runtime = boto3.client(
     "sagemaker-runtime", region_name=REGION) if USE_SAGEMAKER else None
-
-# ─── Matched CSV columns (must match your matched_lgbtq_bills.csv) ─────
-MATCHED_COLUMNS = [
-    "state", "bill_id", "session_id", "bill_number",
-    "status", "status_desc", "status_date",
-    "title", "description",
-    "committee_id", "committee",
-    "last_action_date", "last_action",
-    "url", "state_link",
-    "sponsor_names", "sponsor_parties",
-    "primary_sponsor", "sponsor_count",
-    "action_count", "last_history_action",
-    "document_count", "document_id", "document_type", "document_url",
-    "rollcall_count", "total_yea", "total_nay",
-    "year",
-    "r_sponsors", "d_sponsors", "other_sponsors", "bill_dominant_party",
-    "passed", "failed", "vetoed",
-    "state_lean", "r_sponsorship_ratio", "pass_rate_gap",
-    "overall_pass_rate", "bipartisan_ratio",
-    "session_year",
-    "label", "label_source",
-    "issues", "issue_categories",
-]
 
 # Status code → description mapping (from LegiScan API docs)
 STATUS_MAP = {
@@ -107,7 +89,7 @@ def list_incremental_csvs():
     keys = []
     for obj in response.get("Contents", []):
         key = obj["Key"]
-        if key.endswith(".csv") and "/processed/" not in key:
+        if key.endswith(".csv"):
             keys.append(key)
     return keys
 
@@ -118,42 +100,10 @@ def read_csv_from_s3(key):
     return list(csv.DictReader(StringIO(text)))
 
 
-def load_existing_matched():
-    """Load current matched_lgbtq_bills.csv."""
-    try:
-        obj = s3.get_object(Bucket=BUCKET, Key=MATCHED_KEY)
-        text = obj["Body"].read().decode("utf-8")
-        return list(csv.DictReader(StringIO(text)))
-    except Exception:
-        return []
-
-
-def save_matched_csv(rows):
-    """Write matched_lgbtq_bills.csv to S3 with correct column order."""
-    if not rows:
-        return
-
-    lines = [",".join(MATCHED_COLUMNS)]
-    for row in rows:
-        vals = []
-        for c in MATCHED_COLUMNS:
-            v = str(row.get(c, "")).replace('"', '""')
-            if "," in v or '"' in v or "\n" in v:
-                v = f'"{v}"'
-            vals.append(v)
-        lines.append(",".join(vals))
-
-    s3.put_object(
-        Bucket=BUCKET, Key=MATCHED_KEY,
-        Body="\n".join(lines),
-        ContentType="text/csv",
-    )
-
-
-def move_to_processed(key):
-    """Move CSV to processed/ so we don't re-read it."""
+def move_to_archive(key):
+    """Move input CSV to raw/legiscan-classified/ (different prefix, no re-trigger)."""
     filename = key.split("/")[-1]
-    new_key = f"{PROCESSED_PREFIX}{filename}"
+    new_key = f"{ARCHIVE_PREFIX}{filename}"
     s3.copy_object(
         Bucket=BUCKET,
         CopySource={"Bucket": BUCKET, "Key": key},
@@ -162,8 +112,8 @@ def move_to_processed(key):
     s3.delete_object(Bucket=BUCKET, Key=key)
 
 
-def save_bills_csv_to(rows, prefix, label):
-    """Save bills as CSV to a specific S3 prefix."""
+def save_matches_csv(rows):
+    """Save LGBTQ+ matches to processed/classified/ (triggers Lambda 3)."""
     if not rows:
         return None
 
@@ -179,7 +129,7 @@ def save_bills_csv_to(rows, prefix, label):
         lines.append(",".join(vals))
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    key = f"{prefix}{label}_{timestamp}.csv"
+    key = f"{CLASSIFIED_OUTPUT_PREFIX}matches_{timestamp}.csv"
 
     s3.put_object(
         Bucket=BUCKET,
@@ -242,7 +192,7 @@ def compute_features(bill):
         "pass_rate_gap": "",
         "overall_pass_rate": "",
         "bipartisan_ratio": "",
-        # These get filled by classification below
+        # Pass through existing fields
         "committee_id": bill.get("committee_id", ""),
         "total_yea": bill.get("total_yea", 0),
         "total_nay": bill.get("total_nay", 0),
@@ -255,7 +205,7 @@ def compute_features(bill):
 
 # ─── Classification ───────────────────────────────────────
 
-# LGBTQ+ relevance keywords (from your notebook 03)
+# LGBTQ+ relevance keywords (from notebook 03)
 LGBTQ_KEYWORDS = [
     "transgender", "gender identity", "sexual orientation",
     "lgbtq", "same-sex", "same sex", "gay", "lesbian", "nonbinary",
@@ -308,7 +258,7 @@ ISSUE_MAP = {
 def classify_heuristic(bill):
     """
     Heuristic LGBTQ+ relevance and stance classification.
-    Based on your notebook 03 logic.
+    Based on notebook 03 logic.
 
     Returns (is_relevant, label, confidence, issues, issue_categories)
     """
@@ -438,8 +388,8 @@ def lambda_handler(event, context):
 
     if not to_classify:
         for key in csv_keys:
-            move_to_processed(key)
-        print("All bills already classified. CSVs moved. Done.")
+            move_to_archive(key)
+        print("All bills already classified. CSVs archived. Done.")
         return {"statusCode": 200, "classified": 0, "matched": 0}
 
     # 5. Classify
@@ -453,8 +403,7 @@ def lambda_handler(event, context):
         bill = compute_features(bill)
 
         # Classify
-        is_relevant, label, confidence, issues, categories = classify_bill(
-            bill)
+        is_relevant, label, confidence, issues, categories = classify_bill(bill)
 
         # Update tracker (regardless of result)
         classified[bid] = bill.get("change_hash", "")
@@ -477,31 +426,14 @@ def lambda_handler(event, context):
     print(f"  LGBTQ+ relevant: {len(new_matches)}")
     print(f"  Not relevant: {not_relevant}")
 
-    # 6. Append to matched_lgbtq_bills.csv
+    # 6. Write matches to processed/classified/ (triggers Lambda 3)
+    matches_csv_key = None
     if new_matches:
-        existing = load_existing_matched()
-        existing_ids = {str(r.get("bill_id", "")) for r in existing}
-
-        added = 0
-        updated = 0
-        for match in new_matches:
-            bid = str(match.get("bill_id", ""))
-            if bid in existing_ids:
-                # Replace existing entry
-                existing = [r for r in existing if str(
-                    r.get("bill_id", "")) != bid]
-                existing.append(match)
-                updated += 1
-            else:
-                existing.append(match)
-                added += 1
-
-        save_matched_csv(existing)
-        print(f"  matched_lgbtq_bills.csv: +{added} new, {updated} updated "
-              f"({len(existing)} total)")
+        matches_csv_key = save_matches_csv(new_matches)
+        print(f"  Matches CSV: s3://{BUCKET}/{matches_csv_key}")
 
         # Print sample matches
-        print(f"\n  Sample new matches:")
+        print(f"\n  Sample matches:")
         for m in new_matches[:5]:
             print(f"    {m.get('state')} {m.get('bill_number')}: "
                   f"{m.get('label')} — {m.get('title', '')[:60]}")
@@ -509,22 +441,13 @@ def lambda_handler(event, context):
             print(f"    ... and {len(new_matches) - 5} more")
 
     # 7. Save classification tracker
-    save_classified_bills = classified
     save_json_to_s3(CLASSIFIED_KEY, classified)
     print(f"  classified_bills.json: {len(classified)} total")
 
-    # 8. Write new matches to to-embed/ (triggers Lambda 3: embed + Neo4j)
-    embed_csv_key = None
-    if new_matches:
-        embed_csv_key = save_bills_csv_to(
-            new_matches, "processed/to-embed/", "matches"
-        )
-        print(f"  To-embed CSV: s3://{BUCKET}/{embed_csv_key}")
-
-    # 9. Move input CSVs to processed
+    # 8. Move input CSVs to archive (different prefix, no re-trigger)
     for key in csv_keys:
-        move_to_processed(key)
-        print(f"  Moved: {key}")
+        move_to_archive(key)
+        print(f"  Archived: {key} → {ARCHIVE_PREFIX}")
 
     duration = round(time.time() - start, 1)
     print(f"\nDone in {duration}s")
@@ -534,7 +457,7 @@ def lambda_handler(event, context):
         "classified": len(to_classify),
         "matched": len(new_matches),
         "not_relevant": not_relevant,
-        "embed_csv_key": embed_csv_key,
+        "matches_csv_key": matches_csv_key,
         "duration_seconds": duration,
     }
 
