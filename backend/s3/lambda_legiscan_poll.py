@@ -30,15 +30,12 @@ from datetime import datetime, timezone
 
 import boto3
 import requests
-import dotenv
-
-dotenv.load_dotenv()
 
 # ─── Config from environment ──────────────────────────────
-API_KEY = os.getenv("LEGISCAN_API_KEY")
-BUCKET = os.getenv("BUCKET", "arc-radius-s3-bucket")
-REGION = os.getenv("AWS_REGION", "us-east-1")
-STATES_ENV = os.getenv("STATES", "CA")
+API_KEY = os.environ["LEGISCAN_API_KEY"]
+BUCKET = os.environ.get("BUCKET", "arc-radius-s3-bucket")
+REGION = os.environ.get("AWS_REGION", "us-east-1")
+STATES_ENV = os.environ.get("STATES", "CA")
 
 API_URL = "https://api.legiscan.com/"
 KNOWN_IDS_KEY = "pipeline/metadata/known_bill_ids.json"
