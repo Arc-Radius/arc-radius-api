@@ -208,3 +208,60 @@ def graph_rag_query_for_bill(
     finally:
         if own_db:
             db.close()
+
+
+def _build_related_seed_query(current_ranked: list[dict], max_chunks: int = 3) -> str:
+    seed_chunks = current_ranked[:max_chunks]
+    seed_text = "\n\n".join((chunk.get("text") or "").strip() for chunk in seed_chunks)
+    return seed_text[:2500]
+
+
+def graph_related_bills_query_for_bill(
+    bill_pk: int,
+    *,
+    seed_chunk_count: int = 3,
+    top: int = 30,
+    max_related_bills: int = 8,
+    db: Neo4j | None = None,
+) -> tuple[list[dict], dict[str, dict], str]:
+    own_db = db is None
+    if own_db:
+        db = Neo4j()
+
+    try:
+        current_ranked, _, _ = graph_rag_query_for_bill(int(bill_pk), db=db)
+        if not current_ranked:
+            return [], {}, ""
+
+        seed_query = _build_related_seed_query(current_ranked, max_chunks=seed_chunk_count)
+        if not seed_query:
+            return [], {}, ""
+
+        ranked, meta, _ = graph_rag_query(seed_query, top=top, db=db)
+        target_bill_pk = str(bill_pk)
+
+        # Keep one top chunk per related bill, excluding the current bill.
+        seen_related_bills: set[str] = set()
+        related_ranked: list[dict] = []
+        for row in ranked:
+            row_meta = meta.get(row["chunk_id"], {})
+            row_bill_pk = str(row_meta.get("bill_pk", ""))
+            if (
+                not row_bill_pk
+                or row_bill_pk == target_bill_pk
+                or row_bill_pk in seen_related_bills
+            ):
+                continue
+            seen_related_bills.add(row_bill_pk)
+            related_ranked.append(row)
+            if len(related_ranked) >= max_related_bills:
+                break
+
+        if not related_ranked:
+            return [], meta, ""
+
+        context = build_context(related_ranked, meta)
+        return related_ranked, meta, context
+    finally:
+        if own_db:
+            db.close()

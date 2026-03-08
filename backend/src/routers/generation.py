@@ -11,10 +11,10 @@ router = APIRouter(prefix="/generate", tags=["generation"])
 
 
 class BillGenerationRequest(BaseModel):
-    task: Literal["bill_summary", "bill_why_matters"] = Field(
+    task: Literal["bill_summary", "bill_why_matters", "bill_related"] = Field(
         ...,
         description=(
-            "Generation task type. Supports 'bill_summary' and 'bill_why_matters'."
+            "Generation task type. Supports 'bill_summary', 'bill_why_matters', and 'bill_related'."
         ),
     )
     bill_pk: int = Field(

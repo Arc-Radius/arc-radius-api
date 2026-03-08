@@ -1,4 +1,8 @@
-from graph.api.query import graph_rag_query, graph_rag_query_for_bill
+from graph.api.query import (
+    graph_rag_query,
+    graph_rag_query_for_bill,
+    graph_related_bills_query_for_bill,
+)
 from bedrock.bedrock_client import generate
 
 SYSTEM_PROMPT = """
@@ -74,6 +78,19 @@ Requirements:
 - If impact is uncertain, clearly state that.
 - Length: 3-5 sentences.
 """.strip(),
+    "bill_related": """
+Role: You are a legislative analyst.
+
+Task: Highlight bills that are related to the current bill.
+
+Requirements:
+- Use only the related bill information provided below.
+- Explain concrete similarities (topic, approach, or legal mechanism).
+- Keep the explanation practical and neutral.
+- Do not speculate beyond the provided records.
+- If relationships are weak or unclear, clearly state that.
+- Length: 3-5 sentences.
+""".strip(),
 }
 
 
@@ -127,7 +144,10 @@ def query_and_generate_task(
 ):
     """Task-based bill generation handler using all chunks from one bill."""
     query = task
-    ranked, meta, context = graph_rag_query_for_bill(int(bill_pk))
+    if task == "bill_related":
+        ranked, meta, context = graph_related_bills_query_for_bill(int(bill_pk))
+    else:
+        ranked, meta, context = graph_rag_query_for_bill(int(bill_pk))
     prompt = _build_task_prompt(task=task, query=query, context=context)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
