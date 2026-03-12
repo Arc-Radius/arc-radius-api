@@ -1,6 +1,6 @@
-from dotenv import load_dotenv
+from graph.api.env import load_graph_env
 
-load_dotenv()
+load_graph_env()
 
 from graph.api.embed import embed_texts
 from graph.api.neo4j_client import Neo4j

@@ -8,10 +8,6 @@ import csv
 import re
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 # paths and constants
 REPO_ROOT = Path(__file__).resolve().parents[3]

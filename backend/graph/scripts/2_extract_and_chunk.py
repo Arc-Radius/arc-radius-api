@@ -3,10 +3,6 @@ from graph.api.extract_text import extract_elements, local_bill_path
 from graph.api.chunking import make_chunks
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BILL_TEXT_DIR = REPO_ROOT / "datasources" / "legiscan-bill-text" / "bill-text"
