@@ -56,6 +56,7 @@ MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
 OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)
 
 RETURN c.chunk_id AS chunk_id,
+       c.chunk_index AS chunk_index,
        c.section_path AS section_path,
        d.document_id AS document_id,
        d.url AS doc_url,
@@ -81,8 +82,24 @@ RETURN c.chunk_id AS chunk_id,
 BILL_CHUNKS_CYPHER = """
 MATCH (b:Bill {bill_pk: $bill_pk})-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(c:Chunk)
 RETURN c.chunk_id AS chunk_id,
-       coalesce(c.text, "") AS text
+       coalesce(c.text, "") AS text,
+       c.chunk_index AS chunk_index
 ORDER BY c.chunk_index ASC
+"""
+
+RELATED_BILL_EXPANSION_CYPHER = """
+UNWIND $seeds AS seed
+MATCH (b:Bill {bill_pk: seed.bill_pk})-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(c:Chunk)
+WITH seed, c, abs(c.chunk_index - seed.center_idx) AS distance
+WHERE distance <= $chunk_window
+RETURN seed.bill_pk AS bill_pk,
+       seed.center_idx AS center_idx,
+       seed.seed_score AS seed_score,
+       c.chunk_id AS chunk_id,
+       coalesce(c.text, "") AS text,
+       c.chunk_index AS chunk_index,
+       distance
+ORDER BY bill_pk ASC, distance ASC, chunk_index ASC
 """
 
 
@@ -222,6 +239,8 @@ def graph_related_bills_query_for_bill(
     seed_chunk_count: int = 3,
     top: int = 30,
     max_related_bills: int = 8,
+    max_chunks_per_related_bill: int = 5,
+    chunk_window: int = 2,
     db: Neo4j | None = None,
 ) -> tuple[list[dict], dict[str, dict], str]:
     own_db = db is None
@@ -240,26 +259,73 @@ def graph_related_bills_query_for_bill(
         ranked, meta, _ = graph_rag_query(seed_query, top=top, db=db)
         target_bill_pk = str(bill_pk)
 
-        # Keep one top chunk per related bill, excluding the current bill.
+        # Keep one seed chunk per related bill, excluding the current bill.
         seen_related_bills: set[str] = set()
-        related_ranked: list[dict] = []
+        seeds: list[dict] = []
         for row in ranked:
             row_meta = meta.get(row["chunk_id"], {})
             row_bill_pk = str(row_meta.get("bill_pk", ""))
+            center_idx = row_meta.get("chunk_index")
             if (
                 not row_bill_pk
                 or row_bill_pk == target_bill_pk
                 or row_bill_pk in seen_related_bills
+                or center_idx is None
             ):
                 continue
             seen_related_bills.add(row_bill_pk)
-            related_ranked.append(row)
-            if len(related_ranked) >= max_related_bills:
+            seeds.append(
+                {
+                    "bill_pk": row_bill_pk,
+                    "center_idx": int(center_idx),
+                    "seed_score": float(row["score"]),
+                }
+            )
+            if len(seeds) >= max_related_bills:
                 break
+
+        if not seeds:
+            return [], meta, ""
+
+        expanded_rows = db.run(
+            RELATED_BILL_EXPANSION_CYPHER,
+            seeds=seeds,
+            chunk_window=max(chunk_window, 0),
+        )
+        if not expanded_rows:
+            return [], meta, ""
+
+        per_bill_counts: dict[str, int] = {}
+        related_ranked: list[dict] = []
+        for row in expanded_rows:
+            row_bill_pk = str(row.get("bill_pk", ""))
+            if not row_bill_pk:
+                continue
+
+            current_count = per_bill_counts.get(row_bill_pk, 0)
+            if current_count >= max_chunks_per_related_bill:
+                continue
+
+            seed_score = float(row.get("seed_score", 0.0))
+            distance = int(row.get("distance", 0))
+            score = seed_score * (0.85 ** distance)
+            related_ranked.append(
+                {
+                    "chunk_id": row["chunk_id"],
+                    "text": row["text"],
+                    "chunk_index": row.get("chunk_index"),
+                    "score": score,
+                }
+            )
+            per_bill_counts[row_bill_pk] = current_count + 1
 
         if not related_ranked:
             return [], meta, ""
 
+        # Rebuild metadata for the expanded chunk set.
+        chunk_ids = [r["chunk_id"] for r in related_ranked]
+        meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
+        meta = {m["chunk_id"]: m for m in meta_rows}
         context = build_context(related_ranked, meta)
         return related_ranked, meta, context
     finally:
