@@ -17,7 +17,6 @@ def main():
     parser.add_argument("--bill-pk", type=str, required=True)
     parser.add_argument("--seed-query-max-chars", type=int, default=2500)
     parser.add_argument("--top", "-n", type=int, default=30)
-    parser.add_argument("--max-related-bills", type=int, default=5)
     parser.add_argument("--max-chunks-per-related-bill", type=int, default=2)
     parser.add_argument("--max-total-chunks", type=int, default=12)
     args = parser.parse_args()
@@ -28,7 +27,6 @@ def main():
         args.bill_pk,
         seed_query_max_chars=args.seed_query_max_chars,
         top=args.top,
-        max_related_bills=args.max_related_bills,
         max_chunks_per_related_bill=args.max_chunks_per_related_bill,
         max_total_chunks=args.max_total_chunks,
     )

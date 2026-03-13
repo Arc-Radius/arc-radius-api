@@ -237,7 +237,6 @@ def graph_related_bills_query_for_bill(
     *,
     seed_query_max_chars: int = 2500,
     top: int = 30,
-    max_related_bills: int = 5,
     max_chunks_per_related_bill: int = 2,
     max_total_chunks: int = 12,
     db: Neo4j | None = None,
@@ -262,7 +261,6 @@ def graph_related_bills_query_for_bill(
         meta = {m["chunk_id"]: m for m in meta_rows}
         target_bill_pk = str(bill_pk)
 
-        seen_related_bills: set[str] = set()
         per_bill_counts: dict[str, int] = {}
         related_ranked: list[dict] = []
         for row in ranked:
@@ -276,10 +274,7 @@ def graph_related_bills_query_for_bill(
 
             if per_bill_counts.get(row_bill_pk, 0) >= max_chunks_per_related_bill:
                 continue
-            if row_bill_pk not in seen_related_bills and len(seen_related_bills) >= max_related_bills:
-                continue
 
-            seen_related_bills.add(row_bill_pk)
             per_bill_counts[row_bill_pk] = per_bill_counts.get(row_bill_pk, 0) + 1
             related_ranked.append(row)
 
