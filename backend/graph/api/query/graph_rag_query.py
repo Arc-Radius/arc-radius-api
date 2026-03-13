@@ -56,6 +56,7 @@ MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
 OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)
 
 RETURN c.chunk_id AS chunk_id,
+       c.chunk_index AS chunk_index,
        c.section_path AS section_path,
        d.document_id AS document_id,
        d.url AS doc_url,
@@ -76,6 +77,21 @@ RETURN c.chunk_id AS chunk_id,
        b.vetoed AS vetoed,
        b.url AS bill_url,
        b.state_link AS state_link
+"""
+
+BILL_CHUNKS_CYPHER = """
+MATCH (b:Bill {bill_pk: $bill_pk})-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(c:Chunk)
+RETURN c.chunk_id AS chunk_id,
+       coalesce(c.text, "") AS text,
+       c.chunk_index AS chunk_index
+ORDER BY c.chunk_index ASC
+"""
+
+BILL_SEED_META_CYPHER = """
+MATCH (b:Bill {bill_pk: $bill_pk})
+RETURN coalesce(b.title, "") AS title,
+       coalesce(b.description, "") AS description
+LIMIT 1
 """
 
 
@@ -174,6 +190,106 @@ def graph_rag_query(
         meta = {m["chunk_id"]: m for m in meta_rows}
         context = build_context(top_ranked, meta)
         return top_ranked, meta, context
+    finally:
+        if own_db:
+            db.close()
+
+
+def graph_rag_query_for_bill(
+    bill_pk: str, *, db: Neo4j | None = None
+) -> tuple[list[dict], dict[str, dict], str]:
+    own_db = db is None
+    if own_db:
+        db = Neo4j()
+
+    try:
+        ranked = db.run(BILL_CHUNKS_CYPHER, bill_pk=bill_pk)
+        if not ranked:
+            return [], {}, ""
+        for row in ranked:
+            row["score"] = 1.0
+
+        chunk_ids = [r["chunk_id"] for r in ranked]
+        meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
+        meta = {m["chunk_id"]: m for m in meta_rows}
+        context = build_context(ranked, meta)
+        return ranked, meta, context
+    finally:
+        if own_db:
+            db.close()
+
+
+def _build_seed_query_from_bill_meta(meta: dict[str, str]) -> str:
+    title = (meta.get("title") or "").strip()
+    description = (meta.get("description") or "").strip()
+    if not title and not description:
+        return ""
+    parts: list[str] = []
+    if title:
+        parts.append(f"Bill title: {title}")
+    if description:
+        parts.append(f"Bill description: {description}")
+    return "\n".join(parts)
+
+
+def graph_related_bills_query_for_bill(
+    bill_pk: str,
+    *,
+    seed_query_max_chars: int = 2500,
+    top: int = 30,
+    max_chunks_per_related_bill: int = 2,
+    max_total_chunks: int = 12,
+    db: Neo4j | None = None,
+) -> tuple[list[dict], dict[str, dict], str]:
+    own_db = db is None
+    if own_db:
+        db = Neo4j()
+
+    try:
+        bill_meta_rows = db.run(BILL_SEED_META_CYPHER, bill_pk=bill_pk)
+        bill_meta = bill_meta_rows[0] if bill_meta_rows else {}
+        seed_query = _build_seed_query_from_bill_meta(bill_meta)[: max(seed_query_max_chars, 1)]
+        if not seed_query:
+            return [], {}, ""
+
+        ranked = _run_vector_retrieval(db, seed_query, top)
+        if not ranked:
+            return [], {}, ""
+
+        candidate_chunk_ids = [r["chunk_id"] for r in ranked]
+        meta_rows = db.run(METADATA_CYPHER, chunk_ids=candidate_chunk_ids)
+        meta = {m["chunk_id"]: m for m in meta_rows}
+        target_bill_pk = str(bill_pk)
+
+        per_bill_counts: dict[str, int] = {}
+        related_ranked: list[dict] = []
+        for row in ranked:
+            row_meta = meta.get(row["chunk_id"], {})
+            row_bill_pk = str(row_meta.get("bill_pk", ""))
+            if (
+                not row_bill_pk
+                or row_bill_pk == target_bill_pk
+            ):
+                continue
+
+            if per_bill_counts.get(row_bill_pk, 0) >= max_chunks_per_related_bill:
+                continue
+
+            per_bill_counts[row_bill_pk] = per_bill_counts.get(row_bill_pk, 0) + 1
+            related_ranked.append(row)
+
+            if len(related_ranked) >= max_total_chunks:
+                break
+
+        if not related_ranked:
+            return [], {}, ""
+
+        # Rebuild metadata for the final filtered chunk set.
+        chunk_ids = [r["chunk_id"] for r in related_ranked]
+        meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
+        meta = {m["chunk_id"]: m for m in meta_rows}
+        context = build_context(related_ranked, meta)
+        return related_ranked, meta, context
     finally:
         if own_db:
             db.close()
