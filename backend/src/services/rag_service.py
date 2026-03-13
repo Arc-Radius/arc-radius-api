@@ -141,6 +141,18 @@ def _build_task_prompt(task: str, query: str, context: str) -> str:
     )
 
 
+def _build_task_prompt_template(task: str, query: str) -> str:
+    if task not in TASK_PROMPTS:
+        raise ValueError(f"Unsupported generation task: {task}")
+
+    return (
+        f"{TASK_PROMPTS[task]}\n\n"
+        "Bill records:\n{context}\n\n"
+        f"User request:\n{query}\n\n"
+        "If evidence is missing, say what is missing."
+    )
+
+
 def query_and_generate(query: str, top: int = 10):
     """Full RAG pipeline: query graph → build context → generate answer."""
     ranked, meta, context = graph_rag_query(query, top=top)
@@ -164,10 +176,17 @@ def query_and_generate_task(
     else:
         ranked, meta, context = graph_rag_query_for_bill(bill_pk)
     prompt = _build_task_prompt(task=task, query=query, context=context)
+    prompt_template = _build_task_prompt_template(task=task, query=query)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
     sources = _build_sources(ranked, meta)
-    result = {"task": task, "query": query, "answer": answer, "sources": sources}
+    result = {
+        "task": task,
+        "query": query,
+        "prompt_template": prompt_template,
+        "answer": answer,
+        "sources": sources,
+    }
     result["bill_pk"] = bill_pk
     if shared_bill_task:
         result["bill_meta"] = _build_shared_bill_meta(ranked, meta)
