@@ -98,20 +98,13 @@ def _build_sources(ranked, meta):
     return [
         {
             "chunk_id": r["chunk_id"],
-            "text": r["text"],
             "score": r["score"],
-            "meta": meta.get(r["chunk_id"], {}),
-        }
-        for r in ranked
-    ]
-
-
-def _build_sources_without_meta(ranked):
-    return [
-        {
-            "chunk_id": r["chunk_id"],
-            "text": r["text"],
-            "score": r["score"],
+            "bill_pk": meta.get(r["chunk_id"], {}).get("bill_pk"),
+            "state": meta.get(r["chunk_id"], {}).get("state"),
+            "bill_number": meta.get(r["chunk_id"], {}).get("bill_number"),
+            "title": meta.get(r["chunk_id"], {}).get("title"),
+            "section_path": meta.get(r["chunk_id"], {}).get("section_path"),
+            "chunk_index": meta.get(r["chunk_id"], {}).get("chunk_index"),
         }
         for r in ranked
     ]
@@ -173,7 +166,7 @@ def query_and_generate_task(
     prompt = _build_task_prompt(task=task, query=query, context=context)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
-    sources = _build_sources_without_meta(ranked) if shared_bill_task else _build_sources(ranked, meta)
+    sources = _build_sources(ranked, meta)
     result = {"task": task, "query": query, "answer": answer, "sources": sources}
     result["bill_pk"] = bill_pk
     if shared_bill_task:
