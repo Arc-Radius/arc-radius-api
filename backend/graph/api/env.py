@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
+# graph environment in order to run experiments using different environments
 def load_graph_env() -> None:
     graph_root = Path(__file__).resolve().parents[1]
     backend_env = graph_root.parent / ".env"

@@ -43,18 +43,31 @@ def main():
     text_len = sum(len(e.text) for e in elements if getattr(e, "text", None))
     print(f"Extracted {len(elements)} elements ({text_len} chars)")
 
-    # make chunks from elements
-    chunks = make_chunks(elements)
+    # make chunks from elements using context-aware embedding text
+    chunks = make_chunks(
+        elements,
+        doc_context={
+            "state": "TEST",
+            "bill_id": "0",
+            "bill_number": "TEST-BILL",
+            "session_id": "0",
+            "document_type": path.suffix.lower().lstrip("."),
+            "bill_title": "Chunking smoke test",
+            "bill_description": "Validates section/subsection and contextual embed text output.",
+        },
+    )
     print(f"Chunks: {len(chunks)}")
     print("=" * 60)
 
     # loop through chunks and print them to view in the terminal
     for i, ch in enumerate(chunks):
-        section = ch["heading"] or "(no section path)"
-        print(f"\n--- chunk {i} | {section} ---")
+        section = ch.get("section_heading") or "(no section heading)"
+        subsection = ch.get("subsection_heading") or "-"
+        print(f"\n--- chunk {i} | section={section} | subsection={subsection} ---")
         print(ch["text"])
-        # if len(ch["text"]) > 300:
-        #     print(f"... ({len(ch['text']) - 300} more chars)")
+        if ch.get("embed_text"):
+            preview = ch["embed_text"][:250].replace("\n", " ")
+            print(f"[embed_text preview] {preview}")
 
 
 if __name__ == "__main__":

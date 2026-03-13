@@ -1,7 +1,8 @@
+from pathlib import Path
+
 from graph.api.neo4j_client import Neo4j
 from graph.api.extract_text import extract_elements, local_bill_path
 from graph.api.chunking import make_chunks
-from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -18,7 +19,9 @@ RETURN d.document_id AS document_id,
        b.state AS state,
        b.bill_id AS bill_id,
        b.session_id AS session_id,
-       b.bill_number AS bill_number
+       b.bill_number AS bill_number,
+       b.title AS bill_title,
+       b.description AS bill_description
 LIMIT $limit
 """
 
@@ -29,7 +32,17 @@ MATCH (d:Document {document_id: row.document_id})
 MERGE (c:Chunk {chunk_id: row.chunk_id})
 SET c.chunk_index = row.chunk_index,
     c.section_path = row.heading,
-    c.text = row.text
+    c.section_heading = row.section_heading,
+    c.subsection_heading = row.subsection_heading,
+    c.text = row.text,
+    c.embed_text = row.embed_text,
+    c.state = row.state,
+    c.bill_id = row.bill_id,
+    c.bill_number = row.bill_number,
+    c.session_id = row.session_id,
+    c.bill_title = row.bill_title,
+    c.bill_description = row.bill_description,
+    c.document_type = row.document_type
 MERGE (d)-[:HAS_CHUNK]->(c)
 """
 
@@ -49,10 +62,14 @@ def main(limit: int = 100, max_docs: int | None = None):
         # loop through documents
         for d in docs:
             path = local_bill_path(
-                d["state"], str(d["bill_id"]), str(d["session_id"]),
-                d["bill_number"], str(d["document_id"]),
+                d["state"],
+                str(d["bill_id"]),
+                str(d["session_id"]),
+                d["bill_number"],
+                str(d["document_id"]),
                 BILL_TEXT_DIR,
             )
+
             if not path:
                 db.run(
                     "MATCH (d:Document {document_id: $did}) SET d.skip = true",
@@ -61,72 +78,110 @@ def main(limit: int = 100, max_docs: int | None = None):
                 print(f"[SKIP] no local file for doc {d['document_id']}")
                 continue
 
-            # extract text from documents
+            # extract text from file
             try:
                 elements = extract_elements(path)
             except Exception as e:
                 print(f"[WARN] extract failed {d['document_id']}: {e}")
                 continue
 
-            # skip documents that have no text
+            # join text from elements
             text = "\n".join(
-                e.text for e in elements if getattr(e, "text", None))
+                e.text for e in elements if getattr(e, "text", None)
+            )
+
             if not text or len(text) < 200:
-                print(
-                    f"[WARN] too little text for {d['document_id']} ({len(text)} chars)")
+                print(f"[WARN] too little text for {d['document_id']} ({len(text)} chars)")
                 db.run(
-                    "MATCH (d:Document {document_id: $did}) SET d.extracted_at = datetime(), d.extracted_len = $n",
-                    did=d["document_id"], n=len(text),
+                    """
+                    MATCH (d:Document {document_id: $did})
+                    SET d.extracted_at = datetime(),
+                        d.extracted_len = $n
+                    """,
+                    did=d["document_id"],
+                    n=len(text),
                 )
                 continue
 
             # create chunks for documents
-            chunks = make_chunks(elements)
+            chunks = make_chunks(
+                elements,
+                doc_context={
+                    "state": d["state"],
+                    "bill_id": d["bill_id"],
+                    "bill_number": d["bill_number"],
+                    "session_id": d["session_id"],
+                    "document_type": d["document_type"],
+                    "bill_title": d["bill_title"],
+                    "bill_description": d["bill_description"],
+                },
+            )
+
             doc_id = str(d["document_id"])
 
             # update document metadata
             db.run(
-                "MATCH (d:Document {document_id: $did}) SET d.extracted_at = datetime(), d.extracted_len = $n",
-                did=doc_id, n=len(text),
+                """
+                MATCH (d:Document {document_id: $did})
+                SET d.extracted_at = datetime(),
+                    d.extracted_len = $n
+                """,
+                did=doc_id,
+                n=len(text),
             )
 
             # create chunk rows
             chunk_rows = []
+            # loop through chunks
             for idx, ch in enumerate(chunks):
-                chunk_rows.append({
-                    "document_id": doc_id,
-                    "chunk_id": f"{doc_id}:{idx}",
-                    "chunk_index": idx,
-                    "heading": ch["heading"],
-                    "text": ch["text"],
-                })
+                chunk_rows.append(
+                    {
+                        "document_id": doc_id,
+                        "chunk_id": f"{doc_id}:{idx}",
+                        "chunk_index": idx,
+                        "heading": ch["heading"],
+                        "section_heading": ch.get("section_heading"),
+                        "subsection_heading": ch.get("subsection_heading"),
+                        "text": ch["text"],
+                        "embed_text": ch["embed_text"],
+                        "state": d["state"],
+                        "bill_id": d["bill_id"],
+                        "bill_number": d["bill_number"],
+                        "session_id": d["session_id"],
+                        "bill_title": d["bill_title"],
+                        "bill_description": d["bill_description"],
+                        "document_type": d["document_type"],
+                    }
+                )
 
-            # create chunks for documents
             for i in range(0, len(chunk_rows), 200):
-                # add chunks to database
-                db.run_batch(CHUNK_CYPHER, chunk_rows[i: i + 200])
+                # run batch of 200 chunks to add to DB
+                db.run_batch(CHUNK_CYPHER, chunk_rows[i:i + 200])
 
             processed += 1
-            # log progress
+            # print progress
             print(f"[OK] {doc_id} ({path.suffix}): {len(chunks)} chunks")
 
             # break if we've processed the max number of documents
             if max_docs and processed >= max_docs:
                 break
 
-    # close database connection
+        if max_docs and processed >= max_docs:
+            break
+
     db.close()
-    # log progress
     print(f"[DONE] processed {processed} documents")
 
 
 if __name__ == "__main__":
     import argparse
 
-    # parse command line argument for max number of documents
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-docs", type=int, default=None,
-                        help="Cap total documents processed")
+    parser.add_argument(
+        "--max-docs",
+        type=int,
+        default=None,
+        help="Cap total documents processed",
+    )
     args = parser.parse_args()
-    # run main function with max number of documents
     main(max_docs=args.max_docs)
