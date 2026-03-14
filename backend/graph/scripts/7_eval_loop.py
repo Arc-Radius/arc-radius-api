@@ -95,6 +95,16 @@ def call_generate(
     return response.json()
 
 
+def build_output_sources(
+    sources: list[dict],
+    anchor_context: str | None = None,
+) -> dict:
+    return {
+        "anchor_context": anchor_context,
+        "sources": sources,
+    }
+
+
 # write records to json
 def write_json(records: list[dict], out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +161,10 @@ def main() -> None:
                             "",
                         ),
                         "Output Text": data.get("answer", ""),
-                        "Output Sources": data.get("sources", []),
+                        "Output Sources": build_output_sources(
+                            data.get("sources", []),
+                            data.get("anchor_context"),
+                        ),
                     }
                     # append record
                     records.append(record)
