@@ -194,9 +194,9 @@ def query_and_generate_task(
     anchor_context: str | None = None
     if task == "bill_related":
         ranked, meta, related_context = graph_related_bills_query_for_bill(bill_pk)
-        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(bill_pk, top=2)
+        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(bill_pk, top=3)
         context = (
-            f"Current bill semantic anchor chunks (top 2):\n{anchor_context}\n\n"
+            f"Current bill semantic anchor chunks (top 3):\n{anchor_context}\n\n"
             f"Candidate related bill records:\n{related_context}"
         )
     else:
