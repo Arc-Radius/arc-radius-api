@@ -247,7 +247,8 @@ def _build_seed_query_from_bill_meta(meta: dict[str, str]) -> str:
 def graph_related_bills_query_for_bill(
     bill_pk: str,
     *,
-    seed_query_max_chars: int = 2500,
+    seed_query_max_chars: int = 10000,
+    anchor_top: int = 2,
     top: int = 30,
     max_chunks_per_related_bill: int = 2,
     max_total_chunks: int = 12,
@@ -258,9 +259,20 @@ def graph_related_bills_query_for_bill(
         db = Neo4j()
 
     try:
-        bill_meta_rows = db.run(BILL_SEED_META_CYPHER, bill_pk=bill_pk)
-        bill_meta = bill_meta_rows[0] if bill_meta_rows else {}
-        seed_query = _build_seed_query_from_bill_meta(bill_meta)[: max(seed_query_max_chars, 1)]
+        # Prefer semantic anchor chunks from the current bill as retrieval seed context.
+        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(
+            bill_pk,
+            top=anchor_top,
+            seed_query_max_chars=seed_query_max_chars,
+            db=db,
+        )
+        seed_query = (anchor_context or "")[: max(seed_query_max_chars, 1)]
+
+        # Fallback to title/description seed if no anchor chunks are available.
+        if not seed_query:
+            bill_meta_rows = db.run(BILL_SEED_META_CYPHER, bill_pk=bill_pk)
+            bill_meta = bill_meta_rows[0] if bill_meta_rows else {}
+            seed_query = _build_seed_query_from_bill_meta(bill_meta)[: max(seed_query_max_chars, 1)]
         if not seed_query:
             return [], {}, ""
 
