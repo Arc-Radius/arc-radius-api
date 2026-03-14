@@ -94,6 +94,18 @@ RETURN coalesce(b.title, "") AS title,
 LIMIT 1
 """
 
+BILL_SEMANTIC_ANCHOR_CHUNKS_CYPHER = """
+MATCH (b:Bill {bill_pk: $bill_pk})-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(c:Chunk)
+WHERE c.embedding IS NOT NULL
+WITH c, vector.similarity.cosine(c.embedding, $query_embedding) AS score
+RETURN c.chunk_id AS chunk_id,
+       coalesce(c.text, "") AS text,
+       c.chunk_index AS chunk_index,
+       score
+ORDER BY score DESC
+LIMIT $top_k
+"""
+
 
 def _record_formatter(record: Any) -> RetrieverResultItem:
     node = record.get("node")
@@ -290,6 +302,47 @@ def graph_related_bills_query_for_bill(
         meta = {m["chunk_id"]: m for m in meta_rows}
         context = build_context(related_ranked, meta)
         return related_ranked, meta, context
+    finally:
+        if own_db:
+            db.close()
+
+
+def graph_semantic_anchor_chunks_for_bill(
+    bill_pk: str,
+    *,
+    top: int = 2,
+    seed_query_max_chars: int = 2500,
+    db: Neo4j | None = None,
+) -> tuple[list[dict], dict[str, dict], str]:
+    own_db = db is None
+    if own_db:
+        db = Neo4j()
+
+    try:
+        bill_meta_rows = db.run(BILL_SEED_META_CYPHER, bill_pk=bill_pk)
+        bill_meta = bill_meta_rows[0] if bill_meta_rows else {}
+        seed_query = _build_seed_query_from_bill_meta(bill_meta)[: max(seed_query_max_chars, 1)]
+        if not seed_query:
+            return [], {}, ""
+
+        query_embedding = BedrockEmbedder().embed_query(seed_query)
+        ranked = db.run(
+            BILL_SEMANTIC_ANCHOR_CHUNKS_CYPHER,
+            bill_pk=bill_pk,
+            query_embedding=query_embedding,
+            top_k=max(top, 1),
+        )
+        if not ranked:
+            return [], {}, ""
+
+        for row in ranked:
+            row["score"] = float(row.get("score", 0.0))
+
+        chunk_ids = [r["chunk_id"] for r in ranked]
+        meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
+        meta = {m["chunk_id"]: m for m in meta_rows}
+        context = build_context(ranked, meta)
+        return ranked, meta, context
     finally:
         if own_db:
             db.close()
