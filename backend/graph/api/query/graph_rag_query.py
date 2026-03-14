@@ -21,6 +21,7 @@ FULLTEXT_INDEX_NAME = "chunkTextIndex"
 EFFECTIVE_SEARCH_RATIO = 4
 HYBRID_RANKER = "naive"
 
+# Large expansion retrieval
 RETRIEVAL_CYPHER = """
 WITH node AS seed, score AS seed_score
 MATCH (d:Document)-[:HAS_CHUNK]->(seed)
@@ -43,6 +44,14 @@ WITH [seed]
      seed_score
 UNWIND expanded_nodes AS node
 WITH node, max(seed_score) AS score
+RETURN node, score
+ORDER BY score DESC
+LIMIT $top_k
+"""
+
+# Related-bills retrieval should stay topical: do not fan out to other states or topics or sessions
+RELATED_RETRIEVAL_CYPHER = """
+WITH node, score
 RETURN node, score
 ORDER BY score DESC
 LIMIT $top_k
@@ -137,12 +146,28 @@ def _extract_ranked(result: Any) -> list[dict]:
         )
     return ranked
 
-
+# general vector retrieval with expansion
 def _run_vector_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
     retriever = VectorCypherRetriever(
         db.driver,
         VECTOR_INDEX_NAME,
         retrieval_query=RETRIEVAL_CYPHER,
+        embedder=BedrockEmbedder(),
+        result_formatter=_record_formatter,
+    )
+    result = retriever.search(
+        query_text=query,
+        top_k=max(top, 1),
+        effective_search_ratio=EFFECTIVE_SEARCH_RATIO,
+    )
+    return _extract_ranked(result)
+
+# related bills retrieval with no expansion
+def _run_related_vector_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
+    retriever = VectorCypherRetriever(
+        db.driver,
+        VECTOR_INDEX_NAME,
+        retrieval_query=RELATED_RETRIEVAL_CYPHER,
         embedder=BedrockEmbedder(),
         result_formatter=_record_formatter,
     )
@@ -244,11 +269,62 @@ def _build_seed_query_from_bill_meta(meta: dict[str, str]) -> str:
     return "\n".join(parts)
 
 
+def _select_related_chunks_by_bill(
+    ranked: list[dict],
+    meta: dict[str, dict],
+    *,
+    target_bill_pk: str,
+    max_chunks_per_related_bill: int,
+    max_total_chunks: int,
+) -> list[dict]:
+    if not ranked or max_total_chunks <= 0 or max_chunks_per_related_bill <= 0:
+        return []
+
+    rows_by_bill: dict[str, list[dict]] = {}
+    for row in ranked:
+        row_meta = meta.get(row["chunk_id"], {})
+        row_bill_pk = str(row_meta.get("bill_pk", ""))
+        if not row_bill_pk or row_bill_pk == target_bill_pk:
+            continue
+        rows_by_bill.setdefault(row_bill_pk, []).append(row)
+
+    if not rows_by_bill:
+        return []
+
+    # Sort chunks in each bill by relevance so we can take top M.
+    for bill_rows in rows_by_bill.values():
+        bill_rows.sort(key=lambda r: (-float(r.get("score", 0.0)), str(r.get("chunk_id", ""))))
+
+    # How many distinct bills we can include while honoring chunk caps.
+    max_related_bills = max(
+        1,
+        (max_total_chunks + max_chunks_per_related_bill - 1) // max_chunks_per_related_bill,
+    )
+
+    # Rank bills by their best chunk score.
+    bill_rank = sorted(
+        rows_by_bill.items(),
+        key=lambda item: (
+            -float(item[1][0].get("score", 0.0)),
+            item[0],
+        ),
+    )
+    selected_bill_pks = [bill_pk for bill_pk, _ in bill_rank[:max_related_bills]]
+
+    related_ranked: list[dict] = []
+    for bill_pk in selected_bill_pks:
+        for row in rows_by_bill[bill_pk][:max_chunks_per_related_bill]:
+            related_ranked.append(row)
+            if len(related_ranked) >= max_total_chunks:
+                return related_ranked
+    return related_ranked
+
+
 def graph_related_bills_query_for_bill(
     bill_pk: str,
     *,
     seed_query_max_chars: int = 10000,
-    anchor_top: int = 2,
+    anchor_top: int = 3,
     top: int = 30,
     max_chunks_per_related_bill: int = 2,
     max_total_chunks: int = 12,
@@ -276,34 +352,20 @@ def graph_related_bills_query_for_bill(
         if not seed_query:
             return [], {}, ""
 
-        ranked = _run_vector_retrieval(db, seed_query, top)
+        ranked = _run_related_vector_retrieval(db, seed_query, top)
         if not ranked:
             return [], {}, ""
 
         candidate_chunk_ids = [r["chunk_id"] for r in ranked]
         meta_rows = db.run(METADATA_CYPHER, chunk_ids=candidate_chunk_ids)
         meta = {m["chunk_id"]: m for m in meta_rows}
-        target_bill_pk = str(bill_pk)
-
-        per_bill_counts: dict[str, int] = {}
-        related_ranked: list[dict] = []
-        for row in ranked:
-            row_meta = meta.get(row["chunk_id"], {})
-            row_bill_pk = str(row_meta.get("bill_pk", ""))
-            if (
-                not row_bill_pk
-                or row_bill_pk == target_bill_pk
-            ):
-                continue
-
-            if per_bill_counts.get(row_bill_pk, 0) >= max_chunks_per_related_bill:
-                continue
-
-            per_bill_counts[row_bill_pk] = per_bill_counts.get(row_bill_pk, 0) + 1
-            related_ranked.append(row)
-
-            if len(related_ranked) >= max_total_chunks:
-                break
+        related_ranked = _select_related_chunks_by_bill(
+            ranked,
+            meta,
+            target_bill_pk=str(bill_pk),
+            max_chunks_per_related_bill=max_chunks_per_related_bill,
+            max_total_chunks=max_total_chunks,
+        )
 
         if not related_ranked:
             return [], {}, ""
