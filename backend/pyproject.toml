@@ -25,6 +25,7 @@ dependencies = [
     "boto3 (>=1.42.56,<2.0.0)",
     "neo4j-graphrag (>=1.13.1,<2.0.0)",
     "pandas (>=3.0.1,<4.0.0)",
+    "requests (>=2.32.5,<3.0.0)",
 ]
 
 [tool.poetry.group.dev.dependencies]

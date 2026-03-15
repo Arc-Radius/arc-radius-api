@@ -43,3 +43,6 @@ bill-text.zip
 bill-text/
 
 helpful_queries.txt
+
+#all eval bill file match
+backend/graph/output/

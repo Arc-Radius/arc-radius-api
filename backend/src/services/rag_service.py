@@ -1,9 +1,17 @@
+import os
+
 from graph.api.query import (
     graph_rag_query,
     graph_rag_query_for_bill,
     graph_related_bills_query_for_bill,
+    graph_semantic_anchor_chunks_for_bill,
 )
 from bedrock.bedrock_client import generate
+
+SONNET4_ROUGH_CONTEXT_TOKENS = 180_000
+CHARS_PER_TOKEN_ESTIMATE = 4
+DEFAULT_MAX_CONTEXT_CHARS = SONNET4_ROUGH_CONTEXT_TOKENS * CHARS_PER_TOKEN_ESTIMATE
+MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS)))
 
 SYSTEM_PROMPT = """
 Audience:
@@ -45,6 +53,8 @@ Avoid:
 - Assuming identity labels.
 - Moralizing language.
 - Urgent, alarmist phrasing.
+- Giving legal advice.
+- Commenting on the status of the bill.
 
 Grounding:
 - Explain using only information supported by the bill text.
@@ -53,7 +63,7 @@ Grounding:
 
 TASK_PROMPTS = {
     "bill_summary": """
-Role: You are a legislative explainer.
+Role: You are a helpful, affirming legislative explainer for LGBTQ+ youth navigating legal landscapes. Use the provided bill data to give accurate, accessible answers in plain language appropriate for teenagers.
 
 Task: Explain what this bill does.
 
@@ -66,7 +76,7 @@ Rules:
 - Be neutral and factual.
 """.strip(),
     "bill_why_matters": """
-Role: You are a policy translator helping someone understand how a bill might affect daily life.
+Role: You are a helpful, affirming policy translator helping LGBTQ+ youth understand how a bill might affect daily life. Use the provided bill data to give accurate, accessible answers in plain language appropriate for teenagers.
 
 Task: Explain why this bill could matter to an LGBTQ+ Young Adult.
 
@@ -75,21 +85,25 @@ Requirements:
 - Avoid exaggeration.
 - Avoid fear language.
 - Explain practical effects.
+- If a bill is harmful, explain what it does without being alarmist.
+- If a bill is supportive, highlight how it is supportive to the LGBTQ+ audience.
 - If impact is uncertain, clearly state that.
 - Length: 3-5 sentences.
 """.strip(),
     "bill_related": """
-Role: You are a legislative analyst.
+Role: You are a helpful, affirming legislative analyst for LGBTQ+ youth navigating legal landscapes. Use the provided bill data to give accurate, accessible answers in plain language appropriate for teenagers.
 
 Task: Highlight bills that are related to the current bill.
 
 Requirements:
-- Use only the related bill information provided below.
+- Use only the two sections provided below: current bill semantic anchor chunks and candidate related bill records.
 - Explain concrete similarities (topic, approach, or legal mechanism).
 - Keep the explanation practical and neutral.
 - Do not speculate beyond the provided records.
 - If relationships are weak or unclear, clearly state that.
-- Length: 3-5 sentences.
+- Each bill should be its own bullet point.
+- Length: 2-3 sentences per bill.
+- Display a confidence rating below each bullet point of low, medium, or high based on how confident you are in the relationship.
 """.strip(),
 }
 
@@ -103,7 +117,7 @@ def _build_sources(ranked, meta):
             "state": meta.get(r["chunk_id"], {}).get("state"),
             "bill_number": meta.get(r["chunk_id"], {}).get("bill_number"),
             "title": meta.get(r["chunk_id"], {}).get("title"),
-            "section_path": meta.get(r["chunk_id"], {}).get("section_path"),
+            "chunk_text": _limit_context_length(r.get("text", "")),
             "chunk_index": meta.get(r["chunk_id"], {}).get("chunk_index"),
         }
         for r in ranked
@@ -125,7 +139,7 @@ def _build_default_prompt(query: str, context: str) -> str:
         "Use only the bill records below as evidence.\n\n"
         f"Bill records:\n{context}\n\n"
         f"User question:\n{query}\n\n"
-        "If evidence is missing, say what is missing."
+        "If evidence is missing, do not make up information."
     )
 
 
@@ -137,8 +151,26 @@ def _build_task_prompt(task: str, query: str, context: str) -> str:
         f"{TASK_PROMPTS[task]}\n\n"
         f"Bill records:\n{context}\n\n"
         f"User request:\n{query}\n\n"
-        "If evidence is missing, say what is missing."
+        "If evidence is missing, do not make up information."
     )
+
+
+def _build_task_prompt_template(task: str, query: str) -> str:
+    if task not in TASK_PROMPTS:
+        raise ValueError(f"Unsupported generation task: {task}")
+
+    return (
+        f"{TASK_PROMPTS[task]}\n\n"
+        "Bill records:\n{context}\n\n"
+        f"User request:\n{query}\n\n"
+        "If evidence is missing, do not make up information."
+    )
+
+
+def _limit_context_length(context: str, max_chars: int = MAX_CONTEXT_CHARS) -> str:
+    if max_chars <= 0 or len(context) <= max_chars:
+        return context
+    return context[:max_chars]
 
 
 def query_and_generate(query: str, top: int = 10):
@@ -159,15 +191,30 @@ def query_and_generate_task(
     """Task-based bill generation handler using all chunks from one bill."""
     query = task
     shared_bill_task = task in {"bill_summary", "bill_why_matters"}
+    anchor_context: str | None = None
     if task == "bill_related":
-        ranked, meta, context = graph_related_bills_query_for_bill(bill_pk)
+        ranked, meta, related_context = graph_related_bills_query_for_bill(bill_pk)
+        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(bill_pk, top=3)
+        context = (
+            f"Current bill semantic anchor chunks (top 3):\n{anchor_context}\n\n"
+            f"Candidate related bill records:\n{related_context}"
+        )
     else:
         ranked, meta, context = graph_rag_query_for_bill(bill_pk)
+        context = _limit_context_length(context)
     prompt = _build_task_prompt(task=task, query=query, context=context)
+    prompt_template = _build_task_prompt_template(task=task, query=query)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
     sources = _build_sources(ranked, meta)
-    result = {"task": task, "query": query, "answer": answer, "sources": sources}
+    result = {
+        "task": task,
+        "query": query,
+        "prompt_template": prompt_template,
+        "answer": answer,
+        "anchor_context": anchor_context,
+        "sources": sources,
+    }
     result["bill_pk"] = bill_pk
     if shared_bill_task:
         result["bill_meta"] = _build_shared_bill_meta(ranked, meta)

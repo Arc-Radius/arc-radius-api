@@ -3,6 +3,7 @@ from graph.api.query.graph_rag_query import (
     graph_rag_query,
     graph_rag_query_for_bill,
     graph_related_bills_query_for_bill,
+    graph_semantic_anchor_chunks_for_bill,
 )
 
 __all__ = [
@@ -11,4 +12,5 @@ __all__ = [
     "graph_rag_query",
     "graph_rag_query_for_bill",
     "graph_related_bills_query_for_bill",
+    "graph_semantic_anchor_chunks_for_bill",
 ]
