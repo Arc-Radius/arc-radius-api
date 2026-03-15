@@ -8,9 +8,7 @@ from graph.api.query import (
 )
 from bedrock.bedrock_client import generate
 
-SONNET4_ROUGH_CONTEXT_TOKENS = 180_000
-CHARS_PER_TOKEN_ESTIMATE = 4
-DEFAULT_MAX_CONTEXT_CHARS = SONNET4_ROUGH_CONTEXT_TOKENS * CHARS_PER_TOKEN_ESTIMATE
+DEFAULT_MAX_CONTEXT_CHARS = 160_000
 MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS)))
 
 SYSTEM_PROMPT = """
@@ -199,6 +197,7 @@ def query_and_generate_task(
             f"Current bill semantic anchor chunks (top 3):\n{anchor_context}\n\n"
             f"Candidate related bill records:\n{related_context}"
         )
+        context = _limit_context_length(context)
     else:
         ranked, meta, context = graph_rag_query_for_bill(bill_pk)
         context = _limit_context_length(context)
