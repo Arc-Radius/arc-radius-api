@@ -7,6 +7,7 @@ from pathlib import Path
 import requests
 
 TASKS = ("bill_summary", "bill_why_matters", "bill_related")
+TASK_SLEEP_SECONDS = 5.0
 OUTPUT_FIELDS = (
     "Bill ID",
     "Output Prompt Template",
@@ -191,6 +192,9 @@ def main() -> None:
                             "Output Sources": [],
                         }
                     )
+                sleep_seconds = TASK_SLEEP_SECONDS * float(task_idx < len(TASKS))
+                print(f"  [SLEEP] waiting {sleep_seconds:.1f}s before next task")
+                time.sleep(sleep_seconds)
 
     # write records to json
     write_json(records, json_out)
