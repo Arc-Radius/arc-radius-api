@@ -46,3 +46,4 @@ helpful_queries.txt
 
 #all eval bill file match
 backend/graph/output/
+poetry.lock
