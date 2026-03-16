@@ -2,7 +2,6 @@ import asyncio
 import httpx
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
-from src.routers.limiter import limiter
 from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
 from src.db.supabase import execute_graphql, get_bills_supabase, get_db
 from supabase import Client
@@ -11,7 +10,6 @@ router = APIRouter(prefix="/bills", tags=["bills"])
 
 
 @router.get("/search", summary="Full text search for bills")
-@limiter.limit("1/second")
 async def legiscan_search_bills(
     request: Request,
     state: str = "ALL",
@@ -50,7 +48,6 @@ async def legiscan_search_bills(
 
 
 @router.get("/get", summary="Get a bill by ID")
-@limiter.limit("1/second")
 async def legiscan_get_bill_by_id(request: Request,
                                   bill_id: int,
                                   client: httpx.AsyncClient = Depends(get_legiscan_client)):
@@ -62,7 +59,6 @@ async def legiscan_get_bill_by_id(request: Request,
 
 
 @router.get("/rag", summary="Graph RAG query over bill chunks")
-@limiter.limit("1/second")
 async def knowledge_graph_query(
     request: Request,
     query: str,
@@ -82,7 +78,6 @@ async def knowledge_graph_query(
 
 
 @router.get("/get-with-text", summary="Get a bill and its latest text")
-@limiter.limit("1/second")
 async def legiscan_get_bill_with_text(
     request: Request,
     bill_id: int,
@@ -98,7 +93,6 @@ async def legiscan_get_bill_with_text(
 
 
 @router.get("/supabase", summary="Fetch bills from Supabase database")
-@limiter.limit("1/second")
 async def supabase_bills(
     request: Request,
     limit: int = 20,
@@ -132,7 +126,6 @@ async def supabase_bills(
 
 
 @router.post("/graphql", summary="Query bills via Supabase GraphQL (pg_graphql)")
-@limiter.limit("5/second")
 async def graphql_bills(
     request: Request,
     query: str = Body(..., description="GraphQL query string"),

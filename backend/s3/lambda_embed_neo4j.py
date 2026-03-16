@@ -76,19 +76,22 @@ LEGISCAN_API_KEY = os.environ.get("LEGISCAN_API_KEY", "")
 NEO4J_URI = os.environ.get("NEO4J_URI", "")
 NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "")
-BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.titan-embed-text-v2:0")
+BEDROCK_MODEL_ID = os.environ.get(
+    "BEDROCK_MODEL_ID", "amazon.titan-embed-text-v2:0")
 USE_BEDROCK = os.environ.get("USE_BEDROCK", "false").lower() == "true"
 USE_NEO4J = os.environ.get("USE_NEO4J", "false").lower() == "true"
 
 API_URL = "https://api.legiscan.com/"
 CLASSIFIED_PREFIX = "processed/classified/"       # input: Lambda 2 output
-EMBEDDED_PREFIX = "processed/embedded/"            # archive: move here after processing
+# archive: move here after processing
+EMBEDDED_PREFIX = "processed/embedded/"
 EMBEDDED_TRACKER_KEY = "pipeline/metadata/embedded_bills.json"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 s3 = boto3.client("s3", region_name=REGION)
-bedrock = boto3.client("bedrock-runtime", region_name=REGION) if USE_BEDROCK else None
+bedrock = boto3.client(
+    "bedrock-runtime", region_name=REGION) if USE_BEDROCK else None
 
 
 # ─── LegiScan API ─────────────────────────────────────────
@@ -186,7 +189,8 @@ def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
             combine_under=max(int(chunk_size * 0.5), 1),
         )
         return [
-            {"text": ch.get("text", "").strip(), "heading": ch.get("heading", ""), "index": idx}
+            {"text": ch.get("text", "").strip(), "heading": ch.get(
+                "heading", ""), "index": idx}
             for idx, ch in enumerate(graph_chunks)
             if ch.get("text", "").strip()
         ]
@@ -350,6 +354,23 @@ def write_bill_to_neo4j(driver, bill, doc_id, chunks):
                 "bill_pk": bill_pk,
             })
 
+        # Topic nodes + HAS_TOPIC relationships (from Lambda 2's issue_categories)
+        issue_categories_str = bill.get("issue_categories", "")
+        if issue_categories_str:
+            try:
+                # "['healthcare', 'education']"
+                categories = eval(issue_categories_str)
+            except:
+                categories = []
+            for topic_name in categories:
+                if topic_name and topic_name != "other":
+                    session.run("""
+                        MERGE (t:Topic {name: $topic_name})
+                        WITH t
+                        MATCH (b:Bill {bill_pk: $bill_pk})
+                        MERGE (b)-[:HAS_TOPIC]->(t)
+                    """, {"topic_name": topic_name, "bill_pk": bill_pk})
+
         # Document node + HAS_DOCUMENT relationship
         if doc_id_str and doc_id_str != "0":
             session.run("""
@@ -416,9 +437,12 @@ def write_bill_to_neo4j(driver, bill, doc_id, chunks):
 
 def write_bill_mock(bill, doc_id, chunks):
     """Print what would be written to Neo4j."""
-    bill_pk = make_bill_pk(bill.get("state", ""), bill.get("session_id", ""), bill.get("bill_id", ""))
-    print(f"    [MOCK NEO4J] Bill: {bill_pk} ({bill.get('state')} {bill.get('bill_number')})")
-    print(f"      label={bill.get('label')}  doc_id={doc_id}  chunks={len(chunks)}")
+    bill_pk = make_bill_pk(bill.get("state", ""), bill.get(
+        "session_id", ""), bill.get("bill_id", ""))
+    print(
+        f"    [MOCK NEO4J] Bill: {bill_pk} ({bill.get('state')} {bill.get('bill_number')})")
+    print(
+        f"      label={bill.get('label')}  doc_id={doc_id}  chunks={len(chunks)}")
     if chunks:
         has_emb = sum(1 for c in chunks if c.get("embedding"))
         print(f"      chunk[0]: {chunks[0]['text'][:80]}...")
@@ -545,14 +569,16 @@ def lambda_handler(event, context):
                 bill_text = fetch_bill_text(doc_id)
                 if bill_text:
                     text_fetched += 1
-                    print(f"    Text: {len(bill_text)} chars from doc_id={doc_id}")
+                    print(
+                        f"    Text: {len(bill_text)} chars from doc_id={doc_id}")
             except Exception as e:
                 print(f"    Text fetch error: {e}")
 
         # Fallback: use title + description
         if not bill_text:
             bill_text = f"{bill.get('title', '')}. {bill.get('description', '')}"
-            print(f"    Using title+description as fallback ({len(bill_text)} chars)")
+            print(
+                f"    Using title+description as fallback ({len(bill_text)} chars)")
 
         # Chunk
         chunks = chunk_text(bill_text)
