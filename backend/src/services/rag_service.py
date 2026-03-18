@@ -1,15 +1,16 @@
 import os
 
-from graph.api.query import (
+from src.neo4j_graph.graph_rag_query import (
     graph_rag_query,
     graph_rag_query_for_bill,
     graph_related_bills_query_for_bill,
     graph_semantic_anchor_chunks_for_bill,
 )
-from bedrock.bedrock_client import generate
+from src.bedrock.bedrock_client import generate
 
 DEFAULT_MAX_CONTEXT_CHARS = 160_000
-MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS)))
+MAX_CONTEXT_CHARS = int(
+    os.getenv("RAG_MAX_CONTEXT_CHARS", str(DEFAULT_MAX_CONTEXT_CHARS)))
 
 SYSTEM_PROMPT = """
 Audience:
@@ -191,8 +192,10 @@ def query_and_generate_task(
     shared_bill_task = task in {"bill_summary", "bill_why_matters"}
     anchor_context: str | None = None
     if task == "bill_related":
-        ranked, meta, related_context = graph_related_bills_query_for_bill(bill_pk)
-        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(bill_pk, top=3)
+        ranked, meta, related_context = graph_related_bills_query_for_bill(
+            bill_pk)
+        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(
+            bill_pk, top=3)
         context = (
             f"Current bill semantic anchor chunks (top 3):\n{anchor_context}\n\n"
             f"Candidate related bill records:\n{related_context}"

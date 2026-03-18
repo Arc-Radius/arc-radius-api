@@ -9,9 +9,9 @@ from typing import Any
 from neo4j_graphrag.retrievers import HybridCypherRetriever, VectorCypherRetriever
 from neo4j_graphrag.types import RetrieverResultItem
 
-from neo4j_graph.bedrock_embedder import BedrockEmbedder
-from neo4j_graph.formatting import build_context
-from neo4j_graph.neo4j_client import Neo4j
+from src.neo4j_graph.bedrock_embedder import BedrockEmbedder
+from src.neo4j_graph.formatting import build_context
+from src.neo4j_graph.neo4j_client import Neo4j
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bedrock.bedrock_client import embed_query
+from src.bedrock.bedrock_client import embed_query
 
 
 class BedrockEmbedder:
