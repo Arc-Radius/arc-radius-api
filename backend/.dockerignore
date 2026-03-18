@@ -1,0 +1,48 @@
+# ─── Ingestion-only files (not needed at query time) ─────
+graph/api/chunking.py
+graph/api/extract_text.py
+graph/api/env.py
+graph/scripts/
+graph/tests/
+graph/.venv/
+
+# ─── Lambda deployments ──────────────────────────────────
+s3/
+lambda_classify.py
+lambda_embed_neo4j.py
+lambda_legiscan_poll.py
+
+# ─── Data files ──────────────────────────────────────────
+eval_bills.csv
+*.csv
+
+# ─── Tests ───────────────────────────────────────────────
+tests/
+
+# ─── Local dev / docs ────────────────────────────────────
+docker-compose.yml
+Makefile
+.env
+.env.example
+README.md
+*.md
+
+# ─── Python cache (never include) ────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ─── Venvs ───────────────────────────────────────────────
+.venv/
+graph/.venv/
+
+# ─── IDE ─────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ─── Build artifacts ─────────────────────────────────────
+Dockerfile
+.dockerignore
+push_to_ecr.sh
