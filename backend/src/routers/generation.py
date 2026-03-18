@@ -5,7 +5,6 @@ from typing import Literal
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator
 
-from src.routers.limiter import limiter
 from src.services.rag_service import query_and_generate_task
 
 router = APIRouter(prefix="/generate", tags=["generation"])
@@ -35,7 +34,6 @@ class BillGenerationRequest(BaseModel):
 
 
 @router.post("/bill", summary="Generate bill explanations from RAG context")
-@limiter.limit("1/second")
 async def generate_bill(
     request: Request,
     payload: BillGenerationRequest,
