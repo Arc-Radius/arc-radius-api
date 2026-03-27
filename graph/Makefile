@@ -1,6 +1,7 @@
 export PYTHONPATH := $(CURDIR)/..
+PYTHON := .venv/bin/python
 
-BASE_ENV := ../.env
+BASE_ENV := ../backend/.env
 WAIT_SECONDS ?= 15
 
 EXP_A_ENV := env/exp-a.env
@@ -22,19 +23,19 @@ down-v:
 	$(COMPOSE_BASE) down -v
 
 schema:
-	python scripts/run_schema.py
+	$(PYTHON) scripts/run_schema.py
 
 ingest:
-	python scripts/1_ingest_metadata.py
+	$(PYTHON) scripts/1_ingest_metadata.py
 
 extract:
-	python scripts/2_extract_and_chunk.py $(if $(MAX_DOCS),--max-docs $(MAX_DOCS))
+	$(PYTHON) scripts/2_extract_and_chunk.py $(if $(MAX_DOCS),--max-docs $(MAX_DOCS))
 
 embed:
-	python scripts/3_embed.py
+	$(PYTHON) scripts/3_embed.py
 
 query-example:
-	python scripts/4_example_rag_query.py
+	$(PYTHON) scripts/4_example_rag_query.py
 
 wait:
 	@echo "Waiting for Neo4j..."
@@ -59,19 +60,19 @@ exp-a-down-v:
 	$(COMPOSE_EXP_A) down -v
 
 exp-a-schema:
-	GRAPH_ENV_FILE=$(EXP_A_ENV) python scripts/run_schema.py
+	GRAPH_ENV_FILE=$(EXP_A_ENV) $(PYTHON) scripts/run_schema.py
 
 exp-a-ingest:
-	GRAPH_ENV_FILE=$(EXP_A_ENV) python scripts/1_ingest_metadata.py
+	GRAPH_ENV_FILE=$(EXP_A_ENV) $(PYTHON) scripts/1_ingest_metadata.py
 
 exp-a-extract:
-	GRAPH_ENV_FILE=$(EXP_A_ENV) python scripts/2_extract_and_chunk.py $(if $(MAX_DOCS),--max-docs $(MAX_DOCS))
+	GRAPH_ENV_FILE=$(EXP_A_ENV) $(PYTHON) scripts/2_extract_and_chunk.py $(if $(MAX_DOCS),--max-docs $(MAX_DOCS))
 
 exp-a-embed:
-	GRAPH_ENV_FILE=$(EXP_A_ENV) python scripts/3_embed.py
+	GRAPH_ENV_FILE=$(EXP_A_ENV) $(PYTHON) scripts/3_embed.py
 
 exp-a-query-example:
-	GRAPH_ENV_FILE=$(EXP_A_ENV) python scripts/4_example_rag_query.py
+	GRAPH_ENV_FILE=$(EXP_A_ENV) $(PYTHON) scripts/4_example_rag_query.py
 
 exp-a-setup: exp-a-up wait exp-a-schema
 exp-a-pipeline: exp-a-ingest exp-a-extract exp-a-embed
@@ -92,19 +93,19 @@ exp-b-down-v:
 	$(COMPOSE_EXP_B) down -v
 
 exp-b-schema:
-	GRAPH_ENV_FILE=$(EXP_B_ENV) python scripts/run_schema.py
+	GRAPH_ENV_FILE=$(EXP_B_ENV) $(PYTHON) scripts/run_schema.py
 
 exp-b-ingest:
-	GRAPH_ENV_FILE=$(EXP_B_ENV) python scripts/1_ingest_metadata.py
+	GRAPH_ENV_FILE=$(EXP_B_ENV) $(PYTHON) scripts/1_ingest_metadata.py
 
 exp-b-extract:
-	GRAPH_ENV_FILE=$(EXP_B_ENV) python scripts/2_extract_and_chunk.py $(if $(MAX_DOCS),--max-docs $(MAX_DOCS))
+	GRAPH_ENV_FILE=$(EXP_B_ENV) $(PYTHON) scripts/2_extract_and_chunk.py $(if $(MAX_DOCS),--max-docs $(MAX_DOCS))
 
 exp-b-embed:
-	GRAPH_ENV_FILE=$(EXP_B_ENV) python scripts/3_embed.py
+	GRAPH_ENV_FILE=$(EXP_B_ENV) $(PYTHON) scripts/3_embed.py
 
 exp-b-query-example:
-	GRAPH_ENV_FILE=$(EXP_B_ENV) python scripts/4_example_rag_query.py
+	GRAPH_ENV_FILE=$(EXP_B_ENV) $(PYTHON) scripts/4_example_rag_query.py
 
 exp-b-setup: exp-b-up wait exp-b-schema
 exp-b-pipeline: exp-b-ingest exp-b-extract exp-b-embed
