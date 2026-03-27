@@ -1,7 +1,10 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
+from src.core.settings import settings
 from src.routers.bills import router as bills_router
 from src.routers.generation import router as generation_router
+from src.routers.states import router as states_router
 
 app = FastAPI(
     title="Arc Radius API",
@@ -9,8 +12,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(bills_router)
 app.include_router(generation_router)
+app.include_router(states_router)
 
 
 @app.get("/")
