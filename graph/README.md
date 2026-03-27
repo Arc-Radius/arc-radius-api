@@ -1,123 +1,129 @@
 # Graph DB: Local Build + Eval Loop
 
-This is the shortest path to build the local graph DB once and run the eval loop end-to-end.
+Build the local Neo4j knowledge graph and run the RAG eval loop end-to-end.
 
-## Prereqs
+## Prerequisites
 
-- Python/Poetry env ready in `backend`
 - Docker running locally
-- AWS credentials configured locally (for Bedrock embedding/inference), e.g. `AWS_PROFILE` or standard `~/.aws/credentials`
-- Data files present under:
+- Python 3.11+ installed
+- AWS credentials configured (for Bedrock embedding/inference) via an AWS profile (e.g. `~/.aws/credentials`)
+- Data files present at the following paths relative to the repo root:
   - `datasources/final-outputs/matched_lgbtq_bills.csv`
-  - `datasources/legiscan-bulk-csv/`
-    - the folder for each state year should contain the following files:
-      - `bills.csv`
-      - `people.csv`
-      - `sponsors.csv`
-      - `history.csv`
-      - `documents.csv`
-      - `rollcalls.csv`
-  - `datasources/legiscan-bill-text/bill-text/`
-    - Contains the pdf and html file for each bill
+  - `datasources/legiscan-bulk-csv/` — one folder per state-year, each containing:
+    - `bills.csv`, `people.csv`, `sponsors.csv`, `history.csv`, `documents.csv`, `rollcalls.csv`
+  - `datasources/legiscan-bill-text/bill-text/` — PDF and HTML files for each bill
 
-## 1) Create `.env` (required)
+## 1) Create `backend/.env`
 
-From `backend/.env.example`, create `backend/.env` and set:
+Copy `backend/.env.example` to `backend/.env` and fill in the required values:
 
 ```env
-NEO4J_PASSWORD=
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
+NEO4J_PASSWORD=myneo4jpassword
 
-BEDROCK_EMBED_MODEL_ID=amazon.titan-embed-text-v2:0
-BEDROCK_EMBED_DIMS=1024
-BEDROCK_EMBED_NORMALIZE=true
-RAG_RETRIEVER_MODE=vector
+AWS_PROFILE=<your-aws-profile>
 ```
 
-Notes:
-- `NEO4J_PASSWORD` must match what Docker Neo4j boots with.
+Both the backend API and graph pipeline read from `backend/.env`.
 
-## 2) Install deps
+## 2) Set up the graph virtual environment
 
-From `backend/`:
+From `graph/`:
 
 ```bash
-poetry install
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## 3) Build graph DB (single local build)
+## 3) Build the graph DB
 
-From `backend/graph/`:
+From `graph/` (with `.venv` activated):
 
 ```bash
-make setup
-make pipeline
+make setup       # docker compose up + wait for Neo4j + apply schema
+make pipeline    # ingest metadata -> extract/chunk text -> embed vectors
 ```
-What each command does:
-- `make setup` -> starts Neo4j + waits + applies schema
-- `make pipeline` -> metadata ingest -> text extract/chunk -> embeddings
-  - This is time-intensive and can take a couple hours to complete to run extraction and embedding steps.
 
-## Stepwise command if you don't want to run the full pipeline
+`make setup` runs `docker compose up -d` under the hood, so make sure Docker Desktop is running first.
 
-- `make ingest`: can be several minutes (large CSV scan + graph writes)
-- `make extract`: usually the slowest CPU/IO step (document extraction/chunking)
-- `make embed`: often the slowest wall-clock step (many Bedrock API calls)
+The pipeline can take a couple of hours due to document extraction and Bedrock API calls.
 
-If you want a quick smoke run first:
+### Run individual steps
+
+```bash
+make ingest      # load bill metadata from CSVs into Neo4j
+make extract     # extract text from bill documents and create chunks
+make embed       # generate embeddings via Bedrock and store in Neo4j
+```
+
+For a quick smoke test before running the full pipeline:
 
 ```bash
 make extract MAX_DOCS=10
 make embed
 ```
 
-(Then run full extract later.)
-
-## 4) Start API (required for eval loop)
+## 4) Start the backend API
 
 From `backend/`:
 
 ```bash
+poetry install
 poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000
 ```
 
-Keep this running in a terminal.
+Keep this running — the eval loop calls the API.
 
-## 5) Run eval loop
+## 5) Run the eval loop
 
-In another terminal, from `backend/`:
+In another terminal, from `graph/`:
 
 ```bash
-poetry run python graph/scripts/7_eval_loop.py
+make query-example                                              # quick retrieval sanity check
+python scripts/7_eval_loop.py                                   # full eval loop
 ```
 
 Optional small eval:
 
 ```bash
-poetry run python graph/scripts/7_eval_loop.py --input-csv graph/two_bills.csv --max-bills 2
+python scripts/7_eval_loop.py --input-csv two_bills.csv --max-bills 2
 ```
 
-Outputs are written to:
-- `backend/graph/output/eval_bills_generate_outputs.csv`
-- `backend/graph/output/eval_bills_generate_outputs.json`
+Outputs are written to `graph/output/`.
 
-## Other useful ops
+## Other useful commands
 
-From `backend/graph/`:
+From `graph/`:
 
 ```bash
-make query-example   # quick retrieval sanity check
-make down            # stop Neo4j
-make down-v          # stop + wipe Neo4j volumes
-make reset           # rebuild Neo4j from empty + schema
+make down        # stop Neo4j container
+make down-v      # stop Neo4j and wipe volumes
+make reset       # wipe volumes, restart Neo4j, re-apply schema
 ```
 
-## Helpful tests to see extraction and chunking steps
+## Running experiments
 
-From `backend/graph/`:
+The Makefile supports running parallel Neo4j instances with different configurations for A/B experiments:
 
 ```bash
-poetry run python tests/test_extract.py
-poetry run python tests/test_chunk.py
+make exp-a-setup      # start experiment A Neo4j instance
+make exp-a-pipeline   # run full pipeline for experiment A
+make exp-a-reset      # reset experiment A
+
+make exp-b-setup      # start experiment B Neo4j instance
+make exp-b-pipeline   # run full pipeline for experiment B
+make exp-b-reset      # reset experiment B
+```
+
+Experiment env files are located in `graph/env/` (e.g. `exp-a.env`, `exp-b.env`).
+
+## Tests
+
+From `graph/`:
+
+```bash
+python tests/test_extract.py
+python tests/test_chunk.py
 ```

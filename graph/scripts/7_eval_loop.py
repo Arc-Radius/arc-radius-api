@@ -18,8 +18,8 @@ OUTPUT_FIELDS = (
 
 # build parser for command line arguments
 def _build_parser() -> argparse.ArgumentParser:
-    repo_root = Path(__file__).resolve().parents[3]
-    graph_root = repo_root / "backend" / "graph"
+    repo_root = Path(__file__).resolve().parents[2]
+    graph_root = repo_root / "graph"
     output_dir = graph_root / "output"
 
     parser = argparse.ArgumentParser(

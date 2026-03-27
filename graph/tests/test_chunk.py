@@ -12,7 +12,7 @@ from graph.api.chunking import make_chunks
 from graph.api.extract_text import extract_elements
 
 BASE_DIR = (
-    Path(__file__).resolve().parents[3]
+    Path(__file__).resolve().parents[2]
     / "datasources"
     / "legiscan-bill-text"
     / "bill-text"

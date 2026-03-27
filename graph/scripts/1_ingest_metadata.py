@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 # paths and constants
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # path to matched bills CSV
 MATCHED_CSV = (
