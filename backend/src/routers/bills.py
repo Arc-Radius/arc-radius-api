@@ -3,8 +3,7 @@ import httpx
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
-from src.db.supabase import execute_graphql, get_bills_supabase, get_db
-from supabase import Client
+from src.db.supabase import Client, execute_graphql, get_bills_supabase, get_db
 from src.services.rag_service import query_and_generate
 router = APIRouter(prefix="/bills", tags=["bills"])
 
