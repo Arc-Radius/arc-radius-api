@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 
 from neo4j_graphrag.retrievers import HybridCypherRetriever, VectorCypherRetriever
 from neo4j_graphrag.types import RetrieverResultItem
 
+from src.constants.states import STATE_NAME_TO_CODE
 from src.neo4j_graph.bedrock_embedder import BedrockEmbedder
 from src.neo4j_graph.formatting import build_context
 from src.neo4j_graph.neo4j_client import Neo4j
@@ -20,30 +22,46 @@ VECTOR_INDEX_NAME = "chunkEmbeddingIndex"
 FULLTEXT_INDEX_NAME = "chunkTextIndex"
 EFFECTIVE_SEARCH_RATIO = 4
 HYBRID_RANKER = "naive"
+STATE_MATCH_BOOST = float(os.getenv("RAG_STATE_MATCH_BOOST", "1.2"))
+STATE_MISMATCH_PENALTY = float(os.getenv("RAG_STATE_MISMATCH_PENALTY", "0.8"))
 
-# Large expansion retrieval
+# ---------------------------------------------------------------------------
+# Lean retrieval: seed chunk + adjacent sibling chunks only.
+#
+# Previously this query fanned out through Topic and State relationships,
+# pulling in chunks from every bill that shared a topic or state with the
+# seed bill.  With 23 000+ chunks in Neo4j Aura, that expansion was
+# combinatorially expensive and consistently exceeded API Gateway's 29 s
+# integration timeout.
+#
+# The fix keeps only the most valuable expansion tier — sibling chunks
+# (±2 index positions in the same Document) — which provides surrounding
+# legislative text for context without touching the broader graph.
+#
+# State-level relevance boosting is handled in Python by
+# _rerank_with_state_hints(), so removing the Cypher-side state traversal
+# loses no ranking signal.
+#
+# Score decay:
+#   1.0x  — seed chunk (direct vector match)
+#   0.9x  — sibling chunks (adjacent in same document, ±2 index)
+# ---------------------------------------------------------------------------
 RETRIEVAL_CYPHER = """
 WITH node AS seed, score AS seed_score
 MATCH (d:Document)-[:HAS_CHUNK]->(seed)
-MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
 OPTIONAL MATCH (d)-[:HAS_CHUNK]->(sib:Chunk)
 WHERE abs(sib.chunk_index - seed.chunk_index) <= 2
-WITH seed, seed_score, b, collect(DISTINCT sib) AS sibling_nodes
-OPTIONAL MATCH (b)-[:HAS_TOPIC]->(:Topic)<-[:HAS_TOPIC]-(ob:Bill)
-WHERE ob <> b
-OPTIONAL MATCH (ob)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(tc:Chunk)
-WITH seed, seed_score, b, sibling_nodes, collect(DISTINCT tc)[..50] AS topic_nodes
-OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)<-[:IN_STATE]-(sb:Bill)
-WHERE sb <> b
-OPTIONAL MATCH (sb)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(sc:Chunk)
-WITH seed, seed_score, sibling_nodes, topic_nodes, collect(DISTINCT sc)[..50] AS state_nodes
-WITH [seed]
-     + sibling_nodes
-     + [n IN topic_nodes WHERE n IS NOT NULL]
-     + [n IN state_nodes WHERE n IS NOT NULL] AS expanded_nodes,
-     seed_score
-UNWIND expanded_nodes AS node
-WITH node, max(seed_score) AS score
+  AND sib <> seed
+WITH seed, seed_score, collect(DISTINCT sib) AS sibling_nodes
+
+WITH seed_score,
+     [[seed, seed_score * 1.0]] +
+     [n IN sibling_nodes WHERE n IS NOT NULL | [n, seed_score * 0.9]]
+     AS pairs
+UNWIND pairs AS pair
+WITH pair[0] AS node, pair[1] AS score
+
+WITH node, max(score) AS score
 RETURN node, score
 ORDER BY score DESC
 LIMIT $top_k
@@ -217,6 +235,47 @@ def _search_ranked(db: Neo4j, query: str, top: int) -> list[dict]:
     return _run_vector_retrieval(db, query, top)
 
 
+def _extract_query_state_hints(query: str) -> set[str]:
+    text = (query or "").lower()
+    if not text:
+        return set()
+
+    hints: set[str] = set()
+    for name, code in STATE_NAME_TO_CODE.items():
+        if re.search(rf"\b{re.escape(name)}\b", text):
+            hints.add(code)
+
+    # Match two-letter state abbreviations as standalone tokens (e.g., "TX").
+    for token in re.findall(r"\b[A-Z]{2}\b", query):
+        if token in STATE_NAME_TO_CODE.values():
+            hints.add(token)
+    return hints
+
+
+def _rerank_with_state_hints(
+    ranked: list[dict], meta: dict[str, dict], query: str
+) -> list[dict]:
+    state_hints = _extract_query_state_hints(query)
+    if not state_hints:
+        return ranked
+
+    reranked: list[dict] = []
+    for row in ranked:
+        adjusted = dict(row)
+        base_score = float(adjusted.get("score", 0.0))
+        row_state = str(
+            meta.get(adjusted["chunk_id"], {}).get("state", "")).upper()
+        if row_state in state_hints:
+            adjusted["score"] = base_score * STATE_MATCH_BOOST
+        elif row_state:
+            adjusted["score"] = base_score * STATE_MISMATCH_PENALTY
+        reranked.append(adjusted)
+
+    reranked.sort(key=lambda r: (-float(r.get("score", 0.0)),
+                  str(r.get("chunk_id", ""))))
+    return reranked
+
+
 def graph_rag_query(
     query: str, *, top: int = 10, db: Neo4j | None = None
 ) -> tuple[list[dict], dict[str, dict], str]:
@@ -226,12 +285,13 @@ def graph_rag_query(
 
     try:
         ranked = _search_ranked(db, query, top)
-        top_ranked = ranked[:top]
-        chunk_ids = [r["chunk_id"] for r in top_ranked]
+        chunk_ids = [r["chunk_id"] for r in ranked]
         if not chunk_ids:
-            return top_ranked, {}, ""
+            return ranked[:top], {}, ""
         meta_rows = db.run(METADATA_CYPHER, chunk_ids=chunk_ids)
         meta = {m["chunk_id"]: m for m in meta_rows}
+        ranked = _rerank_with_state_hints(ranked, meta, query)
+        top_ranked = ranked[:top]
         context = build_context(top_ranked, meta)
         return top_ranked, meta, context
     finally:
