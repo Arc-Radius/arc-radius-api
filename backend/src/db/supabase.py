@@ -5,9 +5,14 @@ import os
 from typing import Optional
 
 from fastapi import Depends
-from supabase import create_client, Client
 from dotenv import load_dotenv
 import httpx
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    create_client = None  # type: ignore[assignment]
+    Client = None  # type: ignore[assignment,misc]
 
 load_dotenv()
 
