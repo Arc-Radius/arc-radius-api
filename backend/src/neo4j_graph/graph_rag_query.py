@@ -25,48 +25,42 @@ HYBRID_RANKER = "naive"
 STATE_MATCH_BOOST = float(os.getenv("RAG_STATE_MATCH_BOOST", "1.2"))
 STATE_MISMATCH_PENALTY = float(os.getenv("RAG_STATE_MISMATCH_PENALTY", "0.8"))
 
-# Graph-expanded retrieval with decayed scoring.
+# ---------------------------------------------------------------------------
+# Lean retrieval: seed chunk + adjacent sibling chunks only.
 #
-# Starting from the vector-matched seed chunk, we fan out through the graph
-# to pull in surrounding context. Each expansion tier gets a lower fraction
-# of the original vector similarity score so that results stay ranked by
-# actual relevance to the query:
+# Previously this query fanned out through Topic and State relationships,
+# pulling in chunks from every bill that shared a topic or state with the
+# seed bill.  With 23 000+ chunks in Neo4j Aura, that expansion was
+# combinatorially expensive and consistently exceeded API Gateway's 29 s
+# integration timeout.
 #
+# The fix keeps only the most valuable expansion tier — sibling chunks
+# (±2 index positions in the same Document) — which provides surrounding
+# legislative text for context without touching the broader graph.
+#
+# State-level relevance boosting is handled in Python by
+# _rerank_with_state_hints(), so removing the Cypher-side state traversal
+# loses no ranking signal.
+#
+# Score decay:
 #   1.0x  — seed chunk (direct vector match)
-#   0.9x  — sibling chunks (adjacent chunks in the same document, ±2 index)
-#   0.5x — topic chunks  (chunks from other bills sharing a Topic node)
-#   0.3x  — state chunks  (chunks from other bills in the same State)
-#
-# After expansion, chunks are de-duplicated by taking the highest score
-# (a chunk found as both a sibling and a topic match keeps the better score).
+#   0.9x  — sibling chunks (adjacent in same document, ±2 index)
+# ---------------------------------------------------------------------------
 RETRIEVAL_CYPHER = """
 WITH node AS seed, score AS seed_score
 MATCH (d:Document)-[:HAS_CHUNK]->(seed)
-MATCH (b:Bill)-[:HAS_DOCUMENT]->(d)
 OPTIONAL MATCH (d)-[:HAS_CHUNK]->(sib:Chunk)
 WHERE abs(sib.chunk_index - seed.chunk_index) <= 2
   AND sib <> seed
-WITH seed, seed_score, b, collect(DISTINCT sib) AS sibling_nodes
-OPTIONAL MATCH (b)-[:HAS_TOPIC]->(:Topic)<-[:HAS_TOPIC]-(ob:Bill)
-WHERE ob <> b
-OPTIONAL MATCH (ob)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(tc:Chunk)
-WITH seed, seed_score, b, sibling_nodes, collect(DISTINCT tc)[..50] AS topic_nodes
-OPTIONAL MATCH (b)-[:IN_STATE]->(s:State)<-[:IN_STATE]-(sb:Bill)
-WHERE sb <> b
-OPTIONAL MATCH (sb)-[:HAS_DOCUMENT]->(:Document)-[:HAS_CHUNK]->(sc:Chunk)
-WITH seed, seed_score, sibling_nodes, topic_nodes, collect(DISTINCT sc)[..50] AS state_nodes
+WITH seed, seed_score, collect(DISTINCT sib) AS sibling_nodes
 
-// Tag each chunk with a decayed score based on how it was discovered
 WITH seed_score,
-     [[seed,        seed_score * 1.0]] +
-     [n IN sibling_nodes WHERE n IS NOT NULL | [n, seed_score * 0.9]] +
-     [n IN topic_nodes   WHERE n IS NOT NULL | [n, seed_score * 0.5]] +
-     [n IN state_nodes   WHERE n IS NOT NULL | [n, seed_score * 0.3]]
+     [[seed, seed_score * 1.0]] +
+     [n IN sibling_nodes WHERE n IS NOT NULL | [n, seed_score * 0.9]]
      AS pairs
 UNWIND pairs AS pair
 WITH pair[0] AS node, pair[1] AS score
 
-// De-duplicate: if a chunk appears in multiple tiers, keep the best score
 WITH node, max(score) AS score
 RETURN node, score
 ORDER BY score DESC
@@ -269,14 +263,16 @@ def _rerank_with_state_hints(
     for row in ranked:
         adjusted = dict(row)
         base_score = float(adjusted.get("score", 0.0))
-        row_state = str(meta.get(adjusted["chunk_id"], {}).get("state", "")).upper()
+        row_state = str(
+            meta.get(adjusted["chunk_id"], {}).get("state", "")).upper()
         if row_state in state_hints:
             adjusted["score"] = base_score * STATE_MATCH_BOOST
         elif row_state:
             adjusted["score"] = base_score * STATE_MISMATCH_PENALTY
         reranked.append(adjusted)
 
-    reranked.sort(key=lambda r: (-float(r.get("score", 0.0)), str(r.get("chunk_id", ""))))
+    reranked.sort(key=lambda r: (-float(r.get("score", 0.0)),
+                  str(r.get("chunk_id", ""))))
     return reranked
 
 
