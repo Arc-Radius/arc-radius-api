@@ -50,8 +50,7 @@ WITH
   $sortBy AS sortBy,
   $sortDir AS sortDir,
   $cursorSortValue AS cursorSortValue,
-  $cursorBillPk AS cursorBillPk,
-  toInteger($pageSize) AS pageSize
+  $cursorBillPk AS cursorBillPk
 MATCH (b:Bill)
 WHERE b.state = state
   AND (size(stances) = 0 OR b.label IN stances)
@@ -67,12 +66,12 @@ WHERE b.state = state
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
 WITH b, [x IN collect(DISTINCT t.name) WHERE x IS NOT NULL] AS topicNames, categories, sortBy, sortDir,
-     cursorSortValue, cursorBillPk, pageSize
+     cursorSortValue, cursorBillPk
 WHERE size(categories) = 0 OR any(cat IN categories WHERE cat IN topicNames)
 OPTIONAL MATCH (p:Person)-[sp:SPONSORS]->(b)
-WITH b, topicNames, p, sp, sortBy, sortDir, cursorSortValue, cursorBillPk, pageSize
+WITH b, topicNames, p, sp, sortBy, sortDir, cursorSortValue, cursorBillPk
 ORDER BY sp.position ASC, p.people_id ASC
-WITH b, topicNames, head(collect(p)) AS primarySponsor, sortBy, sortDir, cursorSortValue, cursorBillPk, pageSize,
+WITH b, topicNames, head(collect(p)) AS primarySponsor, sortBy, sortDir, cursorSortValue, cursorBillPk,
   CASE sortBy
     WHEN 'year' THEN toString(coalesce(toInteger(b.year), 0))
     WHEN 'relevance' THEN toString(coalesce(b.relevance_score, 0.0))
@@ -94,7 +93,7 @@ ORDER BY
   CASE WHEN sortBy = 'relevance' AND sortDir = 'asc'       THEN b.relevance_score END ASC,
   CASE WHEN sortBy = 'relevance' AND sortDir = 'desc'      THEN b.relevance_score END DESC,
   b.bill_pk DESC
-LIMIT pageSize + 1
+LIMIT $fetchLimit
 RETURN collect({
   id: b.bill_pk,
   bill_number: coalesce(b.bill_number, ''),
@@ -140,28 +139,55 @@ OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
 WITH b, [x IN collect(DISTINCT t.name) WHERE x IS NOT NULL] AS topicNames, categories
 WHERE size(categories) = 0 OR any(cat IN categories WHERE cat IN topicNames)
 WITH collect({b:b, topics:topicNames}) AS rows
+WITH rows, size(rows) AS totalCount
+UNWIND rows AS r_st
+WITH rows, totalCount,
+  CASE coalesce(r_st.b.label, '')
+    WHEN 'supportive' THEN 'supportive'
+    WHEN 'harmful' THEN 'harmful'
+    ELSE 'mixed'
+  END AS stanceKey
+WITH rows, totalCount, stanceKey, count(*) AS scnt
+WITH rows, totalCount, collect([stanceKey, scnt]) AS stancePairs
+UNWIND rows AS r
+WITH totalCount, stancePairs, toString(coalesce(toInteger(r.b.year), 0)) AS yk
+WITH stancePairs, totalCount, yk, count(*) AS ycnt
+WITH stancePairs, totalCount, collect([yk, ycnt]) AS yearPairs
 RETURN {
-  stances: reduce(
-    m = {supportive:0, mixed:0, harmful:0},
-    r IN rows |
-    CASE r.b.label
-      WHEN 'supportive' THEN m + {supportive: m.supportive + 1}
-      WHEN 'harmful' THEN m + {harmful: m.harmful + 1}
-      ELSE m + {mixed: m.mixed + 1}
-    END
-  ),
-  categories: reduce(
-    m = {},
-    r IN rows |
-    reduce(m2 = m, c IN r.topics | m2 + {c: coalesce(m2[c], 0) + 1})
-  ),
-  years: reduce(
-    m = {},
-    r IN rows |
-    m + {toString(coalesce(toInteger(r.b.year), 0)): coalesce(m[toString(coalesce(toInteger(r.b.year), 0))], 0) + 1}
-  ),
-  totalCount: size(rows)
+  stancePairs: stancePairs,
+  totalCount: totalCount,
+  yearPairs: yearPairs
 } AS facets
+"""
+
+# Same filters as BILLS_FACETS; dynamic topic keys cannot use map literals — return rows for Python dict.
+BILLS_FACET_CATEGORY_COUNTS = """
+WITH
+  $state AS state,
+  coalesce($stances, []) AS stances,
+  coalesce($categories, []) AS categories,
+  coalesce($years, []) AS years,
+  $tab AS tab
+MATCH (b:Bill)
+WHERE b.state = state
+  AND (size(stances) = 0 OR b.label IN stances)
+  AND (size(years) = 0 OR coalesce(toInteger(b.year), -1) IN years)
+  AND (
+    tab IS NULL
+    OR (tab = 'passed' AND (
+          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+        ))
+    OR (tab = 'active' AND NOT (
+          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+        ))
+  )
+OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
+WITH b, [x IN collect(DISTINCT t.name) WHERE x IS NOT NULL] AS topicNames, categories
+WHERE size(categories) = 0 OR any(cat IN categories WHERE cat IN topicNames)
+WITH collect({b:b, topics:topicNames}) AS rows
+UNWIND rows AS r
+UNWIND coalesce(r.topics, []) AS cat
+RETURN cat AS category, count(*) AS cnt
 """
 
 BILL_DETAIL = """

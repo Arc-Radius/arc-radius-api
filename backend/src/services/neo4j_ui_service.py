@@ -133,17 +133,27 @@ async def list_states_neo4j(*, include_counts: bool) -> StatesResponse:
     return StatesResponse(states=states)
 
 
-def _facets_from_neo4j(raw: dict[str, Any] | None) -> BillFacets:
+def _facets_from_neo4j(
+    raw: dict[str, Any] | None,
+    category_rows: list[dict[str, Any]] | None,
+) -> BillFacets:
     raw = raw or {}
-    stances_in = raw.get("stances") or {}
     stances: dict[LegislativeStatus, int] = {k: 0 for k in LegislativeStatus}
-    for key, val in stances_in.items():
-        try:
-            stances[_stance(str(key))] = int(val)
-        except (TypeError, ValueError):
-            continue
-    categories = {str(k): int(v) for k, v in (raw.get("categories") or {}).items()}
-    years = {str(k): int(v) for k, v in (raw.get("years") or {}).items()}
+    for pair in raw.get("stancePairs") or []:
+        if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+            try:
+                stances[_stance(str(pair[0]))] = int(pair[1])
+            except (TypeError, ValueError):
+                continue
+    categories: dict[str, int] = {}
+    for row in category_rows or []:
+        cat = row.get("category")
+        if cat is not None and str(cat).strip() != "":
+            categories[str(cat)] = int(row.get("cnt", 0))
+    years: dict[str, int] = {}
+    for pair in raw.get("yearPairs") or []:
+        if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+            years[str(pair[0])] = int(pair[1])
     return BillFacets(stances=stances, categories=categories, years=years)
 
 
@@ -180,7 +190,11 @@ async def list_bills_neo4j(
         {**params_base},
     )
     facets_raw = facets_rows[0]["facets"] if facets_rows else None
-    facets = _facets_from_neo4j(facets_raw)
+    category_rows = await neo4j_read(
+        Q.BILLS_FACET_CATEGORY_COUNTS,
+        {**params_base},
+    )
+    facets = _facets_from_neo4j(facets_raw, category_rows)
     total_count = int((facets_raw or {}).get("totalCount", 0))
 
     list_rows = await neo4j_read(
@@ -189,6 +203,7 @@ async def list_bills_neo4j(
             **params_base,
             "cursorSortValue": cursor_sort_value,
             "cursorBillPk": cursor_bill_pk,
+            "fetchLimit": page_size + 1,
         },
     )
     raw_items: list[dict[str, Any]] = list_rows[0].get("rows") or [] if list_rows else []
