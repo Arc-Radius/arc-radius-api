@@ -1,5 +1,3 @@
-import base64
-import json
 from copy import deepcopy
 from datetime import date
 from typing import Any
@@ -17,6 +15,7 @@ from src.models.ui import (
     StateRow,
     StatesResponse,
 )
+from src.services.bill_cursor import decode_cursor, encode_cursor
 
 
 MOCK_STATES: list[dict[str, Any]] = [
@@ -232,19 +231,6 @@ def list_states(include_counts: bool) -> StatesResponse:
     return StatesResponse(states=rows)
 
 
-def _decode_cursor(cursor: str | None) -> tuple[str, str] | None:
-    if not cursor:
-        return None
-    payload = base64.urlsafe_b64decode(cursor.encode()).decode()
-    data = json.loads(payload)
-    return str(data["sortValue"]), str(data["id"])
-
-
-def _encode_cursor(sort_value: str, bill_id: str) -> str:
-    payload = json.dumps({"sortValue": sort_value, "id": bill_id}, separators=(",", ":"))
-    return base64.urlsafe_b64encode(payload.encode()).decode()
-
-
 def _date_key(value: str) -> date:
     return date.fromisoformat(value)
 
@@ -326,7 +312,7 @@ def list_bills(
         scoped = [bill for bill in scoped if bill["year"] in year_set]
 
     sorted_items = _sort_bills(scoped, sort_by=sort_by, sort_dir=sort_dir)
-    cursor_tuple = _decode_cursor(cursor)
+    cursor_tuple = decode_cursor(cursor)
     paged_scope = _apply_cursor(sorted_items, sort_by=sort_by, sort_dir=sort_dir, cursor=cursor_tuple)
 
     rows = paged_scope[:page_size]
@@ -335,11 +321,11 @@ def list_bills(
     if has_more and rows:
         last = rows[-1]
         if sort_by == SortBy.last_action_date:
-            next_cursor = _encode_cursor(last["last_action_date"], last["id"])
+            next_cursor = encode_cursor(last["last_action_date"], last["id"])
         elif sort_by == SortBy.year:
-            next_cursor = _encode_cursor(str(last["year"]), last["id"])
+            next_cursor = encode_cursor(str(last["year"]), last["id"])
         else:
-            next_cursor = _encode_cursor(str(last.get("relevance") or 0.0), last["id"])
+            next_cursor = encode_cursor(str(last.get("relevance") or 0.0), last["id"])
 
     return BillsListResponse(
         bills=[BillListItem.model_validate(item) for item in rows],
