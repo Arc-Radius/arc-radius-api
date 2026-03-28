@@ -239,8 +239,6 @@ RETURN {
     similarBills: [],
     relatedBills: [],
     keyDates: [],
-    aiAnalysis: null,
-    researchEvidence: null,
     sponsorContact: null,
     billTab: CASE WHEN coalesce(b.passed, false) = true
              OR toLower(toString(b.passed)) IN ['true', '1', 'yes'] THEN 'passed' ELSE 'active' END

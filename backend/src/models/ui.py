@@ -110,39 +110,6 @@ class BillKeyDate(BaseModel):
     isPast: bool | None = None
 
 
-class AIAnalysis(BaseModel):
-    classification: str
-    impactScore: float
-    keyProvisions: list[str] = Field(default_factory=list)
-    potentialImpact: str
-    legalContext: str
-    recommendation: str
-
-
-class Study(BaseModel):
-    title: str
-    authors: str
-    journal: str
-    year: int
-    finding: str
-    impactType: Literal["positive", "negative", "neutral"]
-    sampleSize: str | None = None
-    doi: str | None = None
-
-
-class HealthImpact(BaseModel):
-    category: str
-    direction: Literal["positive", "negative"]
-    magnitude: Literal["significant", "moderate", "minor"]
-    description: str
-
-
-class ResearchEvidence(BaseModel):
-    studies: list[Study] = Field(default_factory=list)
-    healthImpacts: list[HealthImpact] = Field(default_factory=list)
-    dsTechnique: str
-
-
 class SponsorContact(BaseModel):
     name: str
     email: str
@@ -171,8 +138,6 @@ class BillDetail(BaseModel):
     similarBills: list[str] = Field(default_factory=list)
     relatedBills: list[RelatedBill] = Field(default_factory=list)
     keyDates: list[BillKeyDate] = Field(default_factory=list)
-    aiAnalysis: AIAnalysis | None = None
-    researchEvidence: ResearchEvidence | None = None
     sponsorContact: SponsorContact | None = None
     billTab: BillTab
 
