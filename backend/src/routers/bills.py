@@ -1,9 +1,24 @@
 import asyncio
+import binascii
+import logging
 import httpx
 from typing import Optional
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+
+logger = logging.getLogger(__name__)
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from src.core.settings import settings
 from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
 from src.db.supabase import Client, execute_graphql, get_bills_supabase, get_db
+from src.models.ui import (
+    BillDetailResponse,
+    BillTab,
+    BillsListResponse,
+    LegislativeStatus,
+    SortBy,
+    SortDir,
+)
+from src.services import neo4j_ui_service as neo_ui
+from src.services.mock_data import get_bill_detail, list_bills
 from src.services.rag_service import query_and_generate
 router = APIRouter(prefix="/bills", tags=["bills"])
 
@@ -44,6 +59,53 @@ async def legiscan_search_bills(
         page=page,
         client=client,
     )
+
+
+@router.get("", response_model=BillsListResponse, summary="List bills (frontend contract)")
+async def get_bills(
+    state: str = Query(..., min_length=2, max_length=2, description="Two-letter state code"),
+    tab: BillTab | None = None,
+    stances: list[LegislativeStatus] | None = Query(default=None),
+    categories: list[str] | None = Query(default=None),
+    years: list[int] | None = Query(default=None),
+    sortBy: SortBy = SortBy.last_action_date,
+    sortDir: SortDir = SortDir.desc,
+    cursor: str | None = None,
+    pageSize: int = Query(default=20, ge=1, le=100),
+):
+    normalized_state = state.upper().strip()
+    if len(normalized_state) != 2 or not normalized_state.isalpha():
+        raise HTTPException(status_code=400, detail="state must be a two-letter code")
+    try:
+        if settings.neo4j_ui_enabled:
+            try:
+                return await neo_ui.list_bills_neo4j(
+                    state=normalized_state,
+                    tab=tab,
+                    stances=stances,
+                    categories=categories,
+                    years=years,
+                    sort_by=sortBy,
+                    sort_dir=sortDir,
+                    cursor=cursor,
+                    page_size=pageSize,
+                )
+            except Exception:
+                logger.exception("Neo4j bills list failed")
+                raise HTTPException(status_code=503, detail="Neo4j unavailable")
+        return list_bills(
+            state=normalized_state,
+            tab=tab,
+            stances=stances,
+            categories=categories,
+            years=years,
+            sort_by=sortBy,
+            sort_dir=sortDir,
+            cursor=cursor,
+            page_size=pageSize,
+        )
+    except (ValueError, binascii.Error):
+        raise HTTPException(status_code=400, detail="Invalid cursor")
 
 
 @router.get("/get", summary="Get a bill by ID")
@@ -167,3 +229,20 @@ async def graphql_bills(
         )
 
     return result
+
+
+@router.get("/{billPk}", response_model=BillDetailResponse, summary="Get bill detail (frontend contract)")
+async def get_bill_by_pk(billPk: str):
+    if settings.neo4j_ui_enabled:
+        try:
+            detail = await neo_ui.get_bill_detail_neo4j(billPk)
+        except Exception:
+            logger.exception("Neo4j bill detail failed")
+            raise HTTPException(status_code=503, detail="Neo4j unavailable")
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Bill not found")
+        return detail
+    detail = get_bill_detail(billPk)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    return detail
