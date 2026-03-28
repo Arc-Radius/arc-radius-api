@@ -54,5 +54,15 @@ class Settings:
             return False
         return bool(self.neo4j_uri and self.neo4j_user)
 
+    @property
+    def rag_and_generation_enabled(self) -> bool:
+        """
+        When false, GET /bills/rag returns 404 and the /generate router is not mounted.
+        Set RAG_AND_GENERATION_ENABLED=false (or 0, no, off) in Lambda/prod to disable.
+        Unset or true keeps current default behavior for local dev.
+        """
+        raw = os.getenv("RAG_AND_GENERATION_ENABLED", "true").strip().lower()
+        return raw not in ("0", "false", "no", "off")
+
 
 settings = Settings()

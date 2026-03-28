@@ -134,6 +134,8 @@ async def knowledge_graph_query(
     - **answer**: LLM-generated response from user prompt and bill chunks
     - **sources**: Retrieved bill chunks with relevance scores and metadata
     """
+    if not settings.rag_and_generation_enabled:
+        raise HTTPException(status_code=404, detail="Not found")
     result = await asyncio.to_thread(query_and_generate, query, top=top)
     return result
 
