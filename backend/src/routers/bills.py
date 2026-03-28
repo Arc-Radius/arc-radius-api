@@ -8,8 +8,7 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from src.core.settings import settings
 from src.db.legiscan import get_legiscan_client, search_bill, get_bill, get_bill_text, get_bill_with_text
-from src.db.supabase import execute_graphql, get_bills_supabase, get_db
-from supabase import Client
+from src.db.supabase import Client, execute_graphql, get_bills_supabase, get_db
 from src.models.ui import (
     BillDetailResponse,
     BillTab,

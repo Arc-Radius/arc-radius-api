@@ -1,17 +1,13 @@
 """GraphRAG retrieval query pipeline built on neo4j-graphrag retrievers."""
 
+'''
+    This file might be outdated, check the backend/src/neo4j_graph/graph_rag_query.py file for the latest version.
+'''
+
+
 from __future__ import annotations
-
 import logging
-import os
-from typing import Any
 
-from neo4j_graphrag.retrievers import HybridCypherRetriever, VectorCypherRetriever
-from neo4j_graphrag.types import RetrieverResultItem
-
-from graph.api.query.bedrock_embedder import BedrockEmbedder
-from graph.api.query.formatting import build_context
-from graph.api.neo4j_client import Neo4j
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +143,8 @@ def _extract_ranked(result: Any) -> list[dict]:
     return ranked
 
 # general vector retrieval with expansion
+
+
 def _run_vector_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
     retriever = VectorCypherRetriever(
         db.driver,
@@ -163,6 +161,8 @@ def _run_vector_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
     return _extract_ranked(result)
 
 # related bills retrieval with no expansion
+
+
 def _run_related_vector_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
     retriever = VectorCypherRetriever(
         db.driver,
@@ -198,15 +198,18 @@ def _run_hybrid_retrieval(db: Neo4j, query: str, top: int) -> list[dict]:
 
 
 def _search_ranked(db: Neo4j, query: str, top: int) -> list[dict]:
-    mode = os.getenv("RAG_RETRIEVER_MODE", DEFAULT_RETRIEVER_MODE).strip().lower()
+    mode = os.getenv("RAG_RETRIEVER_MODE",
+                     DEFAULT_RETRIEVER_MODE).strip().lower()
     if mode == "hybrid":
         try:
             return _run_hybrid_retrieval(db, query, top)
         except Exception:
-            logger.exception("Hybrid retrieval failed, falling back to vector retriever")
+            logger.exception(
+                "Hybrid retrieval failed, falling back to vector retriever")
             return _run_vector_retrieval(db, query, top)
     if mode != "vector":
-        logger.warning("Unknown RAG_RETRIEVER_MODE=%r, using vector retriever", mode)
+        logger.warning(
+            "Unknown RAG_RETRIEVER_MODE=%r, using vector retriever", mode)
     return _run_vector_retrieval(db, query, top)
 
 
@@ -293,12 +296,14 @@ def _select_related_chunks_by_bill(
 
     # Sort chunks in each bill by relevance so we can take top M.
     for bill_rows in rows_by_bill.values():
-        bill_rows.sort(key=lambda r: (-float(r.get("score", 0.0)), str(r.get("chunk_id", ""))))
+        bill_rows.sort(
+            key=lambda r: (-float(r.get("score", 0.0)), str(r.get("chunk_id", ""))))
 
     # How many distinct bills we can include while honoring chunk caps.
     max_related_bills = max(
         1,
-        (max_total_chunks + max_chunks_per_related_bill - 1) // max_chunks_per_related_bill,
+        (max_total_chunks + max_chunks_per_related_bill -
+         1) // max_chunks_per_related_bill,
     )
 
     # Rank bills by their best chunk score.
@@ -309,7 +314,8 @@ def _select_related_chunks_by_bill(
             item[0],
         ),
     )
-    selected_bill_pks = [bill_pk for bill_pk, _ in bill_rank[:max_related_bills]]
+    selected_bill_pks = [bill_pk for bill_pk,
+                         _ in bill_rank[:max_related_bills]]
 
     related_ranked: list[dict] = []
     for bill_pk in selected_bill_pks:
@@ -348,7 +354,8 @@ def graph_related_bills_query_for_bill(
         if not seed_query:
             bill_meta_rows = db.run(BILL_SEED_META_CYPHER, bill_pk=bill_pk)
             bill_meta = bill_meta_rows[0] if bill_meta_rows else {}
-            seed_query = _build_seed_query_from_bill_meta(bill_meta)[: max(seed_query_max_chars, 1)]
+            seed_query = _build_seed_query_from_bill_meta(
+                bill_meta)[: max(seed_query_max_chars, 1)]
         if not seed_query:
             return [], {}, ""
 
@@ -395,7 +402,8 @@ def graph_semantic_anchor_chunks_for_bill(
     try:
         bill_meta_rows = db.run(BILL_SEED_META_CYPHER, bill_pk=bill_pk)
         bill_meta = bill_meta_rows[0] if bill_meta_rows else {}
-        seed_query = _build_seed_query_from_bill_meta(bill_meta)[: max(seed_query_max_chars, 1)]
+        seed_query = _build_seed_query_from_bill_meta(
+            bill_meta)[: max(seed_query_max_chars, 1)]
         if not seed_query:
             return [], {}, ""
 
