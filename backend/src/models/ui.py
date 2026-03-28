@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -205,14 +205,19 @@ class GraphBillRecord(BaseModel):
     year: int | None = None
     state_lean: str | None = None
     bill_dominant_party: str | None = None
-    passed: bool | None = None
-    failed: bool | None = None
-    vetoed: bool | None = None
     r_sponsorship_ratio: float | None = None
     pass_rate_gap: float | str | None = None
     overall_pass_rate: float | str | None = None
     bipartisan_ratio: float | None = None
     session_year: int | None = None
+
+
+GRAPH_RECORD_RESPONSE_EXCLUDE = frozenset({"passed", "failed", "vetoed"})
+
+
+def sanitize_graph_record_dict(d: dict[str, Any]) -> dict[str, Any]:
+    """Strip keys we do not expose on bill detail `graphRecord` (Neo4j may still store them)."""
+    return {k: v for k, v in d.items() if k not in GRAPH_RECORD_RESPONSE_EXCLUDE}
 
 
 class BillDetailResponse(BaseModel):

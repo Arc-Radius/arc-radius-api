@@ -14,6 +14,7 @@ from src.models.ui import (
     SortDir,
     StateRow,
     StatesResponse,
+    sanitize_graph_record_dict,
 )
 from src.services.bill_cursor import decode_cursor, encode_cursor
 
@@ -346,4 +347,8 @@ def get_bill_detail(bill_pk: str) -> BillDetailResponse | None:
     record = MOCK_BILL_DETAILS_BY_PK.get(bill_pk)
     if record is None:
         return None
-    return BillDetailResponse.model_validate(record)
+    d = deepcopy(record)
+    gr = d.get("graphRecord")
+    if isinstance(gr, dict):
+        d["graphRecord"] = sanitize_graph_record_dict(gr)
+    return BillDetailResponse.model_validate(d)

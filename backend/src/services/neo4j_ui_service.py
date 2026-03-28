@@ -21,6 +21,7 @@ from src.models.ui import (
     StateCounts,
     StateRow,
     StatesResponse,
+    sanitize_graph_record_dict,
 )
 from src.services.bill_cursor import decode_cursor, encode_cursor
 
@@ -92,7 +93,7 @@ def _numeric_route_key(bill_pk: str) -> bool:
 
 
 def _normalize_graph_props(props: dict[str, Any]) -> dict[str, Any]:
-    out = dict(props)
+    out = sanitize_graph_record_dict(dict(props))
     bid = out.get("bill_id")
     if bid is not None and not isinstance(bid, str):
         out["bill_id"] = str(bid)
