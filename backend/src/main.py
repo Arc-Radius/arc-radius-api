@@ -33,7 +33,8 @@ app.add_middleware(
 )
 
 app.include_router(bills_router)
-app.include_router(generation_router)
+if settings.rag_and_generation_enabled:
+    app.include_router(generation_router)
 app.include_router(states_router)
 
 
