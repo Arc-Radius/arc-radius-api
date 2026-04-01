@@ -1,3 +1,4 @@
+import json
 import os
 
 from src.neo4j_graph.graph_rag_query import (
@@ -60,6 +61,72 @@ Grounding:
 - If something is unclear, say so instead of guessing.
 """.strip()
 
+RELATED_BILLS_JSON_SYSTEM = """
+Output format (this task only):
+Return a single JSON array only. Do not use markdown code fences or any prose outside the array.
+Each object must use exactly: {"bill_pk": "<STATE:SESSION_ID:BILL_ID>", "summary": "<2-3 sentences>", "confidence": "low"|"medium"|"high"}.
+Every bill_pk MUST be copied exactly from a candidate related bill in the provided records (see SOURCE lines / bill metadata). Do not invent bill_pk values.
+If nothing in the records is clearly related, return [].
+""".strip()
+
+_ALLOWED_CONFIDENCE = frozenset({"low", "medium", "high"})
+
+
+def _strip_json_fence(text: str) -> str:
+    t = text.strip()
+    if not t.startswith("```"):
+        return t
+    lines = t.split("\n")
+    if lines and lines[0].startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].strip().startswith("```"):
+        lines = lines[:-1]
+    return "\n".join(lines).strip()
+
+
+def _candidate_bill_pks_from_chunk_meta(meta: dict[str, dict]) -> set[str]:
+    out: set[str] = set()
+    for m in meta.values():
+        pk = str(m.get("bill_pk") or "").strip()
+        if pk:
+            out.add(pk)
+    return out
+
+
+def parse_related_bills_response(
+    raw: str,
+    allowed_bill_pks: set[str],
+) -> tuple[list[dict[str, str]], str | None]:
+    """
+    Parse model JSON; keep only bill_pk present in retrieval candidates.
+    Returns (items, error_message).
+    """
+    text = _strip_json_fence(raw)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        return [], f"json_decode:{exc}"
+    if not isinstance(data, list):
+        return [], "expected_top_level_array"
+    items: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for el in data:
+        if not isinstance(el, dict):
+            continue
+        pk = str(el.get("bill_pk") or "").strip()
+        summary = str(el.get("summary") or "").strip()
+        conf = str(el.get("confidence") or "").lower().strip()
+        if pk not in allowed_bill_pks or not summary:
+            continue
+        if conf not in _ALLOWED_CONFIDENCE:
+            conf = "medium"
+        if pk in seen:
+            continue
+        seen.add(pk)
+        items.append({"bill_pk": pk, "summary": summary, "confidence": conf})
+    return items, None
+
+
 TASK_PROMPTS = {
     "bill_summary": """
 Role: You are a helpful, affirming legislative explainer for LGBTQ+ youth navigating legal landscapes. Use the provided bill data to give accurate, accessible answers in plain language appropriate for teenagers.
@@ -93,17 +160,14 @@ Requirements:
     "bill_related": """
 Role: You are a helpful, affirming legislative analyst for LGBTQ+ youth navigating legal landscapes. Use the provided bill data to give accurate, accessible answers in plain language appropriate for teenagers.
 
-Task: Highlight bills that are related to the current bill.
+Task: Identify bills from the candidate related bill records that relate to the current bill.
 
 Requirements:
-- Use only the two sections provided below: current bill semantic anchor chunks and candidate related bill records.
-- Explain concrete similarities (topic, approach, or legal mechanism).
-- Keep the explanation practical and neutral.
-- Do not speculate beyond the provided records.
-- If relationships are weak or unclear, clearly state that.
-- Each bill should be its own bullet point.
-- Length: 2-3 sentences per bill.
-- Display a confidence rating below each bullet point of low, medium, or high based on how confident you are in the relationship.
+- Use only: (1) current bill semantic anchor chunks and (2) candidate related bill records below.
+- For each related bill, write a 2-3 sentence neutral summary of the concrete similarity (topic, approach, or legal mechanism).
+- Assign confidence low, medium, or high per bill.
+- Output must be ONLY the JSON array described in the system instructions — no bullet lists or extra text.
+- If relationships are weak or unclear for all candidates, return an empty array [].
 """.strip(),
 }
 
@@ -208,7 +272,13 @@ def query_and_generate_task(
     prompt = _build_task_prompt(task=task, query=query, context=context)
     prompt_template = _build_task_prompt_template(task=task, query=query)
 
-    answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
+    system = (
+        f"{SYSTEM_PROMPT}\n\n{RELATED_BILLS_JSON_SYSTEM}"
+        if task == "bill_related"
+        else SYSTEM_PROMPT
+    )
+    max_tokens = 2048 if task == "bill_related" else 1024
+    answer = generate(prompt=prompt, system=system, max_tokens=max_tokens)
     sources = _build_sources(ranked, meta)
     result = {
         "task": task,
@@ -221,5 +291,13 @@ def query_and_generate_task(
     result["bill_pk"] = bill_pk
     if shared_bill_task:
         result["bill_meta"] = _build_shared_bill_meta(ranked, meta)
+    if task == "bill_related":
+        allowed = _candidate_bill_pks_from_chunk_meta(meta)
+        items, parse_err = parse_related_bills_response(answer, allowed)
+        result["related_bills"] = items
+        result["related_bills_json"] = json.dumps(items, separators=(",", ":"))
+        result["related_bills_parse_error"] = parse_err
+        if parse_err is None:
+            result["answer"] = result["related_bills_json"]
 
     return result

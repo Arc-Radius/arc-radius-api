@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class LegislativeStatus(str, Enum):
@@ -99,7 +99,11 @@ class BillHistoryItem(BaseModel):
 
 
 class RelatedBill(BaseModel):
-    bill_id: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    billPk: str = Field(
+        validation_alias=AliasChoices("billPk", "bill_pk", "bill_id"),
+    )
     summary: str
     confidence: Literal["high", "medium", "low"]
 

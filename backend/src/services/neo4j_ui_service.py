@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from src.db.cypher import ui_queries as Q
@@ -97,6 +98,32 @@ def _normalize_graph_props(props: dict[str, Any]) -> dict[str, Any]:
     bid = out.get("bill_id")
     if bid is not None and not isinstance(bid, str):
         out["bill_id"] = str(bid)
+    return out
+
+
+def _related_bills_from_llm_json(graph_raw: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parse `llm_related_bills_json` on Bill into UI `relatedBills` items (billPk + summary + confidence)."""
+    raw = graph_raw.get("llm_related_bills_json")
+    if not raw or not isinstance(raw, str):
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        pk = item.get("bill_pk") or item.get("billPk")
+        if not pk:
+            continue
+        summ = str(item.get("summary") or "")
+        conf = str(item.get("confidence") or "medium").lower()
+        if conf not in ("high", "medium", "low"):
+            conf = "medium"
+        out.append({"billPk": str(pk), "summary": summ, "confidence": conf})
     return out
 
 
@@ -252,6 +279,9 @@ async def get_bill_detail_neo4j(bill_pk: str) -> BillDetailResponse | None:
     sponsors = [s for s in (bill.get("sponsors") or []) if (s or {}).get("name")]
     bill["sponsors"] = sponsors
     graph_raw = _normalize_graph_props(dict(payload.get("graphRecord") or {}))
+    related = _related_bills_from_llm_json(graph_raw)
+    if related:
+        bill["relatedBills"] = related
     return BillDetailResponse(
         bill=BillDetail.model_validate(bill),
         graphRecord=GraphBillRecord.model_validate(graph_raw),
