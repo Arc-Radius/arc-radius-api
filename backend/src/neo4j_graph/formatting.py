@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-# format status line
+# format status line (Neo4j bill.status_desc, returned as meta["status"])
 
 
 def _status_line(m: dict) -> str:
-    parts = []
-    if m.get("passed"):
-        parts.append("Passed")
-    if m.get("failed"):
-        parts.append("Failed")
-    if m.get("vetoed"):
-        parts.append("Vetoed")
-    return ", ".join(parts) if parts else (m.get("status") or "Unknown")
+    s = (m.get("status") or "").strip()
+    return s if s else "Unknown"
 
 # format context block for a single chunk
 # IMPORTANT: This should be changed based on how we want to structure the context block for the LLM
