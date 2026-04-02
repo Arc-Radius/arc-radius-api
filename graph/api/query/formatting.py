@@ -4,14 +4,15 @@ from __future__ import annotations
 
 # format status line
 def _status_line(m: dict) -> str:
-    parts = []
-    if m.get("passed"):
-        parts.append("Passed")
-    if m.get("failed"):
-        parts.append("Failed")
-    if m.get("vetoed"):
-        parts.append("Vetoed")
-    return ", ".join(parts) if parts else (m.get("status") or "Unknown")
+    status_desc = m.get("status_desc") or m.get("status")
+    if status_desc:
+        return str(status_desc)
+    status = m.get("status")
+    if status is not None:
+        STATUS_DESC = {0: "N/A", 1: "Introduced", 2: "Engrossed", 3: "Enrolled",
+                       4: "Passed", 5: "Vetoed", 6: "Failed"}
+        return STATUS_DESC.get(int(status), "Unknown")
+    return "Unknown"
 
 # format context block for a single chunk
 # IMPORTANT: This should be changed based on how we want to structure the context block for the LLM

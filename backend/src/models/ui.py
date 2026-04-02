@@ -177,12 +177,9 @@ class GraphBillRecord(BaseModel):
     session_year: int | None = None
 
 
-GRAPH_RECORD_RESPONSE_EXCLUDE = frozenset({"passed", "failed", "vetoed"})
-
-
 def sanitize_graph_record_dict(d: dict[str, Any]) -> dict[str, Any]:
-    """Strip keys we do not expose on bill detail `graphRecord` (Neo4j may still store them)."""
-    return {k: v for k, v in d.items() if k not in GRAPH_RECORD_RESPONSE_EXCLUDE}
+    """Sanitize graph record for API response."""
+    return dict(d)
 
 
 class BillDetailResponse(BaseModel):

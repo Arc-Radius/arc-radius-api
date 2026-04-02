@@ -99,9 +99,6 @@ RETURN c.chunk_id AS chunk_id,
        b.state_lean AS state_lean,
        b.r_sponsorship_ratio AS r_sponsorship_ratio,
        b.bipartisan_ratio AS bipartisan_ratio,
-       b.passed AS passed,
-       b.failed AS failed,
-       b.vetoed AS vetoed,
        b.url AS bill_url,
        b.state_link AS state_link
 """
