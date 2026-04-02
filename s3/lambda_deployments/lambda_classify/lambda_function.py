@@ -11,7 +11,7 @@ which computes all derived features internally:
   - state → state_r_sponsorship_ratio (baked-in lookup)
 
 Lambda only adds:
-  - Metadata for Neo4j (status_desc, year, session_year, passed/failed/vetoed)
+  - Metadata for Neo4j (status_desc, year, session_year)
   - Issue categorization using TOPIC_RULES (endpoint doesn't return these)
 
 Tracking:
@@ -146,9 +146,6 @@ def save_matches_csv(rows):
 def compute_bill_metadata(bill):
     """Add derived metadata columns. NOT for SageMaker — just for the output CSV."""
     status = str(bill.get("status", "0"))
-    bill["passed"] = status == "4"
-    bill["failed"] = status == "6"
-    bill["vetoed"] = status == "5"
     bill["status_desc"] = STATUS_MAP.get(status, "")
 
     date_str = bill.get("status_date", "") or bill.get("last_action_date", "")
