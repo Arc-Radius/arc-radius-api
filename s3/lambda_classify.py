@@ -6,7 +6,7 @@ classifies them via SageMaker endpoint (LegalBERT + LogReg).
 
 Lambda is a dumb pipe — sends raw bill fields to the endpoint,
 which computes all derived features internally:
-  - sponsor_parties → dominant_party, r/d/other_sponsors
+  - sponsor_parties → bill_dominant_party, r/d/other_sponsors
   - total_yea/nay → percent_nay
   - state → state_r_sponsorship_ratio (baked-in lookup)
 
@@ -220,7 +220,7 @@ def classify_bill(bill):
     The endpoint computes all derived features internally.
 
     Sends:    text, state, sponsor_parties, total_yea, total_nay
-    Receives: lgbtq_related, label, confidence, relevance_score
+    Receives: lgbtq_related, label, confidence, relevance_score, bill_dominant_party, state_r_sponsorship_ratio
     """
     text = f"{bill.get('title', '')} {bill.get('description', '')}"
 
@@ -243,11 +243,13 @@ def classify_bill(bill):
     label = result.get("label", "unknown")
     confidence = float(result.get("confidence", 0.0))
     relevance_score = float(result.get("relevance_score", 0.0))
+    bill_dominant_party = result.get("bill_dominant_party", "")
+    state_r_sponsorship_ratio = result.get("state_r_sponsorship_ratio", "")
 
     # Categorize issues from text (endpoint doesn't return these)
     issue_categories = categorize_issues(text)
 
-    return is_relevant, label, confidence, relevance_score, issue_categories
+    return is_relevant, label, confidence, relevance_score, issue_categories, bill_dominant_party, state_r_sponsorship_ratio
 
 
 def _to_float(val):
@@ -322,7 +324,7 @@ def lambda_handler(event, context):
 
         # Call SageMaker
         try:
-            is_relevant, label, confidence, relevance_score, issue_categories = classify_bill(
+            is_relevant, label, confidence, relevance_score, issue_categories, bill_dominant_party, state_r_sponsorship_ratio = classify_bill(
                 bill)
         except Exception as e:
             print(f"    ERROR classifying bill {bid}: {e}")
@@ -338,6 +340,8 @@ def lambda_handler(event, context):
             bill["confidence"] = confidence
             bill["relevance_score"] = relevance_score
             bill["issue_categories"] = str(issue_categories)
+            bill["bill_dominant_party"] = bill_dominant_party
+            bill["state_r_sponsorship_ratio"] = state_r_sponsorship_ratio
             new_matches.append(bill)
         else:
             not_relevant += 1
