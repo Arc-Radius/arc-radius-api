@@ -41,9 +41,6 @@ def format_context_block(chunk_text: str, meta: dict, score: float | None = None
 
     if meta.get("state_r_sponsorship_ratio"):
         lines.append(f"R-sponsorship ratio: {meta['state_r_sponsorship_ratio']}")
-    if meta.get("bipartisan_ratio"):
-        lines.append(f"Bipartisan ratio: {meta['bipartisan_ratio']}")
-
     if meta.get("section_path"):
         lines.append(f"Section: {meta['section_path']}")
 

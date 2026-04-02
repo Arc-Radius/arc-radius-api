@@ -245,11 +245,14 @@ def classify_bill(bill):
     relevance_score = float(result.get("relevance_score", 0.0))
     bill_dominant_party = result.get("bill_dominant_party", "")
     state_r_sponsorship_ratio = result.get("state_r_sponsorship_ratio", "")
+    state_lean = result.get("state_lean", "")
+    pass_rate_gap = result.get("pass_rate_gap", "")
+    overall_pass_rate = result.get("overall_pass_rate", "")
 
     # Categorize issues from text (endpoint doesn't return these)
     issue_categories = categorize_issues(text)
 
-    return is_relevant, label, confidence, relevance_score, issue_categories, bill_dominant_party, state_r_sponsorship_ratio
+    return is_relevant, label, confidence, relevance_score, issue_categories, bill_dominant_party, state_r_sponsorship_ratio, state_lean, pass_rate_gap, overall_pass_rate
 
 
 def _to_float(val):
@@ -324,7 +327,7 @@ def lambda_handler(event, context):
 
         # Call SageMaker
         try:
-            is_relevant, label, confidence, relevance_score, issue_categories, bill_dominant_party, state_r_sponsorship_ratio = classify_bill(
+            is_relevant, label, confidence, relevance_score, issue_categories, bill_dominant_party, state_r_sponsorship_ratio, state_lean, pass_rate_gap, overall_pass_rate = classify_bill(
                 bill)
         except Exception as e:
             print(f"    ERROR classifying bill {bid}: {e}")
@@ -342,6 +345,9 @@ def lambda_handler(event, context):
             bill["issue_categories"] = str(issue_categories)
             bill["bill_dominant_party"] = bill_dominant_party
             bill["state_r_sponsorship_ratio"] = state_r_sponsorship_ratio
+            bill["state_lean"] = state_lean
+            bill["pass_rate_gap"] = pass_rate_gap
+            bill["overall_pass_rate"] = overall_pass_rate
             new_matches.append(bill)
         else:
             not_relevant += 1

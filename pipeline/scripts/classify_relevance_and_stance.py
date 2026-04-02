@@ -88,7 +88,7 @@ def parse_party_counts(party_str):
     return counts
 
 
-def dominant_party(row):
+def bill_dominant_party(row):
     if row['r_sponsors'] > row['d_sponsors']:
         return 'R'
     elif row['d_sponsors'] > row['r_sponsors']:
@@ -143,7 +143,7 @@ def main(path_to_file, rel_dir, output_path="bills_classified.csv"):
     df['d_sponsors'] = party_counts['D']
     df['other_sponsors'] = party_counts['Other']
 
-    df['dominant_party'] = df.apply(dominant_party, axis=1)
+    df['bill_dominant_party'] = df.apply(bill_dominant_party, axis=1)
 
     # Apply stance rules
     stance_rules = {
@@ -155,7 +155,7 @@ def main(path_to_file, rel_dir, output_path="bills_classified.csv"):
 
     df["pred_stance"] = np.where(
         df["relevance_pred"] == 1,
-        df["dominant_party"].map(stance_rules),
+        df["bill_dominant_party"].map(stance_rules),
         "not applicable"
     )
 

@@ -173,7 +173,6 @@ class GraphBillRecord(BaseModel):
     state_r_sponsorship_ratio: float | None = None
     pass_rate_gap: float | str | None = None
     overall_pass_rate: float | str | None = None
-    bipartisan_ratio: float | None = None
     session_year: int | None = None
 
 

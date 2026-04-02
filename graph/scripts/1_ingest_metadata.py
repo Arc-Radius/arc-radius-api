@@ -30,7 +30,7 @@ BATCH_SIZE = 500
 EDA_FIELDS = [
     "label", "label_source", "year", "state_lean", "bill_dominant_party",
     "state_r_sponsorship_ratio", "pass_rate_gap",
-    "overall_pass_rate", "bipartisan_ratio", "session_year",
+    "overall_pass_rate", "session_year",
     "issues", "issue_categories",
 ]
 
@@ -70,7 +70,6 @@ SET b.state          = row.state,
     b.state_r_sponsorship_ratio = row.state_r_sponsorship_ratio,
     b.pass_rate_gap  = row.pass_rate_gap,
     b.overall_pass_rate = row.overall_pass_rate,
-    b.bipartisan_ratio = row.bipartisan_ratio,
     b.session_year   = row.session_year,
     b.issues         = row.issues
 """
