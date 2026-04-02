@@ -170,7 +170,7 @@ class GraphBillRecord(BaseModel):
     year: int | None = None
     state_lean: str | None = None
     bill_dominant_party: str | None = None
-    r_sponsorship_ratio: float | None = None
+    state_r_sponsorship_ratio: float | None = None
     pass_rate_gap: float | str | None = None
     overall_pass_rate: float | str | None = None
     bipartisan_ratio: float | None = None

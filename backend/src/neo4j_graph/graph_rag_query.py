@@ -97,7 +97,7 @@ RETURN c.chunk_id AS chunk_id,
        b.label AS label,
        b.year AS year,
        b.state_lean AS state_lean,
-       b.r_sponsorship_ratio AS r_sponsorship_ratio,
+       b.state_r_sponsorship_ratio AS state_r_sponsorship_ratio,
        b.bipartisan_ratio AS bipartisan_ratio,
        b.url AS bill_url,
        b.state_link AS state_link

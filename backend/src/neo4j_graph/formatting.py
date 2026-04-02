@@ -39,8 +39,8 @@ def format_context_block(chunk_text: str, meta: dict, score: float | None = None
         info_parts.append(f"Lean: {meta['state_lean']}")
     lines.append(" | ".join(info_parts))
 
-    if meta.get("r_sponsorship_ratio"):
-        lines.append(f"R-sponsorship ratio: {meta['r_sponsorship_ratio']}")
+    if meta.get("state_r_sponsorship_ratio"):
+        lines.append(f"R-sponsorship ratio: {meta['state_r_sponsorship_ratio']}")
     if meta.get("bipartisan_ratio"):
         lines.append(f"Bipartisan ratio: {meta['bipartisan_ratio']}")
 
