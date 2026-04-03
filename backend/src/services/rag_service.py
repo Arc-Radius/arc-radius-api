@@ -104,6 +104,41 @@ Requirements:
 - Length: 2-3 sentences per bill.
 - Display a confidence rating below each bullet point of low, medium, or high based on how confident you are in the relationship.
 """.strip(),
+    "generate_letter": """
+Role: You help users draft respectful messages to elected officials.
+
+Safety rules:
+- Do not provide legal advice
+- Do not threaten or shame
+- Do not exaggerate claims
+- Do not invent personal details
+
+Task: Write a message about this bill.
+
+User selections:
+Format: {email_or_phone}
+Position: {support_or_oppose}
+Tone: {tone}
+
+Formatting rules:
+
+If Email:
+- include subject line
+- include greeting
+- include closing
+
+If Phone:
+- spoken style
+- under 90 seconds
+- greeting + request + reason + thanks
+
+The message must:
+- clearly state the user's position
+- keep it to 2-3 sentences
+- describe the bill broadly and not in detail
+- include one clear request
+- stay respectful
+- stay grounded in provided information""".strip()
 }
 
 
@@ -166,6 +201,15 @@ def _build_task_prompt_template(task: str, query: str) -> str:
     )
 
 
+def _resolve_letter_prompt(params: dict) -> str:
+    return (
+        TASK_PROMPTS["generate_letter"]
+        .replace("{email_or_phone}", params.get("medium", "email"))
+        .replace("{support_or_oppose}", params.get("stance", "support"))
+        .replace("{tone}", params.get("tone", "conversational"))
+    )
+
+
 def _limit_context_length(context: str, max_chars: int = MAX_CONTEXT_CHARS) -> str:
     if max_chars <= 0 or len(context) <= max_chars:
         return context
@@ -186,16 +230,16 @@ def query_and_generate(query: str, top: int = 10):
 def query_and_generate_task(
     task: str,
     bill_pk: str,
+    letter_params: dict | None = None,
 ):
     """Task-based bill generation handler using all chunks from one bill."""
     query = task
     shared_bill_task = task in {"bill_summary", "bill_why_matters"}
     anchor_context: str | None = None
+
     if task == "bill_related":
-        ranked, meta, related_context = graph_related_bills_query_for_bill(
-            bill_pk)
-        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(
-            bill_pk, top=3)
+        ranked, meta, related_context = graph_related_bills_query_for_bill(bill_pk)
+        _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(bill_pk, top=3)
         context = (
             f"Current bill semantic anchor chunks (top 3):\n{anchor_context}\n\n"
             f"Candidate related bill records:\n{related_context}"
@@ -204,11 +248,26 @@ def query_and_generate_task(
     else:
         ranked, meta, context = graph_rag_query_for_bill(bill_pk)
         context = _limit_context_length(context)
-    prompt = _build_task_prompt(task=task, query=query, context=context)
-    prompt_template = _build_task_prompt_template(task=task, query=query)
+
+    if task == "generate_letter":
+        resolved_prompt_text = _resolve_letter_prompt(letter_params or {})
+        prompt = (
+            f"{resolved_prompt_text}\n\n"
+            f"Bill records:\n{context}\n\n"
+            "If evidence is missing, do not make up information."
+        )
+        prompt_template = (
+            f"{TASK_PROMPTS['generate_letter']}\n\n"
+            "Bill records:\n{context}\n\n"
+            "If evidence is missing, do not make up information."
+        )
+    else:
+        prompt = _build_task_prompt(task=task, query=query, context=context)
+        prompt_template = _build_task_prompt_template(task=task, query=query)
 
     answer = generate(prompt=prompt, system=SYSTEM_PROMPT)
     sources = _build_sources(ranked, meta)
+
     result = {
         "task": task,
         "query": query,
@@ -216,8 +275,8 @@ def query_and_generate_task(
         "answer": answer,
         "anchor_context": anchor_context,
         "sources": sources,
+        "bill_pk": bill_pk,
     }
-    result["bill_pk"] = bill_pk
     if shared_bill_task:
         result["bill_meta"] = _build_shared_bill_meta(ranked, meta)
 
