@@ -22,7 +22,11 @@ def format_context_block(chunk_text: str, meta: dict, score: float | None = None
 
     lines = [header]
 
-    info_parts = [f"State: {state}"]
+    info_parts: list[str] = []
+    bpk = meta.get("bill_pk")
+    if bpk is not None and str(bpk).strip():
+        info_parts.append(f"bill_pk: {bpk}")
+    info_parts.append(f"State: {state}")
     if meta.get("year"):
         info_parts.append(f"Year: {meta['year']}")
     info_parts.append(f"Status: {_status_line(meta)}")
