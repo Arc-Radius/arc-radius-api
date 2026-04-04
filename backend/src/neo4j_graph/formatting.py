@@ -6,8 +6,15 @@ from __future__ import annotations
 
 
 def _status_line(m: dict) -> str:
-    s = (m.get("status") or "").strip()
-    return s if s else "Unknown"
+    status_desc = m.get("status_desc") or m.get("status")
+    if status_desc:
+        return str(status_desc)
+    status = m.get("status")
+    if status is not None:
+        STATUS_DESC = {0: "N/A", 1: "Introduced", 2: "Engrossed", 3: "Enrolled",
+                       4: "Passed", 5: "Vetoed", 6: "Failed"}
+        return STATUS_DESC.get(int(status), "Unknown")
+    return "Unknown"
 
 # format context block for a single chunk
 # IMPORTANT: This should be changed based on how we want to structure the context block for the LLM
@@ -36,11 +43,8 @@ def format_context_block(chunk_text: str, meta: dict, score: float | None = None
         info_parts.append(f"Lean: {meta['state_lean']}")
     lines.append(" | ".join(info_parts))
 
-    if meta.get("r_sponsorship_ratio"):
-        lines.append(f"R-sponsorship ratio: {meta['r_sponsorship_ratio']}")
-    if meta.get("bipartisan_ratio"):
-        lines.append(f"Bipartisan ratio: {meta['bipartisan_ratio']}")
-
+    if meta.get("state_r_sponsorship_ratio"):
+        lines.append(f"R-sponsorship ratio: {meta['state_r_sponsorship_ratio']}")
     if meta.get("section_path"):
         lines.append(f"Section: {meta['section_path']}")
 
