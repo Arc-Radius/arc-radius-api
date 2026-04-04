@@ -74,9 +74,9 @@ EventBridge (daily)
 |---|---|---|
 | `label` | string | "harmful" or "supportive" |
 | `label_source` | string | "aclu" or "plural" |
-| `issues` | string | Raw ACLU issue text, pipe-separated |
-| `status` | int | Numeric LegiScan code (mapped from ACLU/Plural text in NB02) |
-| `status_desc` | string | Original ACLU/Plural text status (e.g., "Advancing", "Defeated") |
+| `issues` | string | Raw ACLU issue text, pipe-separated (batch only — not available for live bills) |
+
+NB02 also maps ACLU/Plural text statuses (e.g., "Advancing", "Defeated") to LegiScan numeric `status` codes and preserves the original text as `status_desc`.
 
 ### Live — from SageMaker endpoint response
 | Field | Type | Description |
@@ -161,7 +161,7 @@ Written by `1_ingest_metadata.py` (batch) or `lambda_embed_neo4j.py` (live).
 `state`, `session_id`, `bill_number`, `status`, `status_desc`, `status_date`, `title`, `description`, `last_action_date`, `last_action`, `url`, `state_link`, `document_id`, `document_type`, `document_url`
 
 ### From EDA / SageMaker (EDA_FIELDS)
-`label`, `label_source`, `year`, `state_lean`, `bill_dominant_party`, `state_r_sponsorship_ratio`, `pass_rate_gap`, `overall_pass_rate`, `session_year`, `issues`, `issue_categories`
+`label`, `label_source`, `year`, `state_lean`, `bill_dominant_party`, `state_r_sponsorship_ratio`, `pass_rate_gap`, `overall_pass_rate`, `session_year`, `issues` (batch only), `issue_categories`
 
 ### Live-only (from SageMaker via Lambda)
 `confidence`, `relevance_score`
@@ -244,6 +244,7 @@ All raw LegiScan fields from Lambda 1, plus:
 | `issues` | ACLU/Plural raw text | Not available | Low — `issue_categories` covers the use case |
 | `confidence` | Not computed | SageMaker output | Low — only batch ACLU/Plural bills lack it |
 | `relevance_score` | Not computed | SageMaker output | Low — batch bills are pre-labeled by ACLU/Plural |
+| `r_sponsors`, `d_sponsors`, `other_sponsors` | Computed in NB03 (not stored in Neo4j) | Computed inside SageMaker (not output) | None — `bill_dominant_party` captures the signal |
 | State profiles | Recomputed on each NB03 run | Frozen at model deploy time | Profiles drift until model retrain/redeploy |
 
 ---

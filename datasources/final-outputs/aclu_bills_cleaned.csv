@@ -21,10 +21,10 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2021,AZ,HB 2710,Other Anti-Trans Bills,harmful,aclu,Introduced,Died,2021-10-15,HB2710
 2021,AZ,SB 1163,LGBTQ Equality Bills | Allowing updated gender markers on ID,supportive,aclu,Introduced,Read second time,2021-01-19,SB1163
 2021,AZ,HB 2652,LGBTQ Equality Bills | Other good bills,supportive,aclu,Introduced,Read for the first time,2021-05-24,HB2652
-2021,FL,HB 935,Anti-Trans bills | Prohibiting heathcare for transgender youth,harmful,aclu,Introduced,Died in subcommittee,2021-04-30,HB935
-2021,FL,HB 211,Anti-Trans bills | Prohibiting heathcare for transgender youth,harmful,aclu,Introduced,Prefiled for 2022; referred to committee,2021-10-06,HB211
-2021,FL,HB 1475,Anti-Trans bills | Excluding transgender youth from athletics,harmful,aclu,Introduced,Died in committee,2021-04-30,HB1475
-2021,FL,SB 2012,Anti-Trans bills | Excluding transgender youth from athletics,harmful,aclu,Introduced,Died in committee,2021-04-30,SB2012
+2021,FL,HB 935,Anti-Trans bills | Prohibiting heathcare for transgender youth,harmful,aclu,Introduced,Died in subcommittee,2021-04-30,H0935
+2021,FL,HB 211,Anti-Trans bills | Prohibiting heathcare for transgender youth,harmful,aclu,Introduced,Prefiled for 2022; referred to committee,2021-10-06,H0211
+2021,FL,HB 1475,Anti-Trans bills | Excluding transgender youth from athletics,harmful,aclu,Introduced,Died in committee,2021-04-30,H1475
+2021,FL,SB 2012,Anti-Trans bills | Excluding transgender youth from athletics,harmful,aclu,Introduced,Died in committee,2021-04-30,S2012
 2021,GA,HB 401,Anti-Trans bills | Prohibiting heathcare for transgender youth,harmful,aclu,Introduced,Read for the second time,2021-02-16,HB401
 2021,GA,HB 276,Anti-Trans bills | Excluding transgender youth from athletics,harmful,aclu,Introduced,Read for the second time,2021-02-08,HB276
 2021,GA,HB 372,Anti-Trans bills | Excluding transgender youth from athletics,harmful,aclu,Introduced,Read for the second time,2021-02-22,HB372
@@ -203,7 +203,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2022,AZ,HB 2608,Anti-Trans,harmful,aclu,Dead,,2022-06-25,HB2608
 2022,AZ,SB 1138,Anti-Trans,harmful,aclu,Signed by Governor,,2022-03-30,SB1138
 2022,AZ,SB 1130,Anti-Trans,harmful,aclu,Dead,,2022-06-25,SB1130
-2022,FL,HB 211,Anti-Trans,harmful,aclu,Dead,,2022-03-14,HB211
+2022,FL,HB 211,Anti-Trans,harmful,aclu,Dead,,2022-03-14,H0211
 2022,GA,HB 401,Anti-Trans,harmful,aclu,Dead,,2022-04-02,HB401
 2022,IA,HF 193,Anti-Trans,harmful,aclu,Dead,,2022-05-24,HF193
 2022,ID,H 675,Anti-Trans,harmful,aclu,Dead,,2022-03-31,H675
@@ -319,9 +319,9 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2022,AZ,HB 2011,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-06-25,HB2011
 2022,AZ,HB 2161,Other school or curriculum restrictions,harmful,aclu,Signed by Governor,,2022-04-29,HB2161
 2022,AZ,HB 2285,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-06-25,HB2285
-2022,FL,SB 1834,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-03-14,SB1834
-2022,FL,HB 1557,Other school or curriculum restrictions,harmful,aclu,Signed by Governor,,2022-04-29,HB1557
-2022,FL,HB 7,Other school or curriculum restrictions,harmful,aclu,Signed by Governor,,2022-04-22,HB7
+2022,FL,SB 1834,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-03-14,S1834
+2022,FL,HB 1557,Other school or curriculum restrictions,harmful,aclu,Signed by Governor,,2022-04-29,H1557
+2022,FL,HB 7,Other school or curriculum restrictions,harmful,aclu,Signed by Governor,,2022-04-22,H0007
 2022,GA,HB 1158,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-04-04,HB1158
 2022,IA,SF 2024,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-05-24,SF2024
 2022,IA,HF 2054,Other school or curriculum restrictions,harmful,aclu,Dead,,2022-05-24,HF2054
@@ -372,7 +372,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2022,NJ,A 328,Religious Freedom Restoration Acts (RFRAs),harmful,aclu,Introduced and Referred to Committee,,2022-01-11,A328
 2022,WV,HB 2545,Religious Freedom Restoration Acts (RFRAs),harmful,aclu,Dead,,2022-03-12,HB2545
 2022,WY,HB 0154,Religious Freedom Restoration Acts (RFRAs),harmful,aclu,Dead,,2022-03-11,HB154
-2022,FL,HB 747,Religious Exemptions in Healthcare Implicating LGBTQ People,harmful,aclu,Died in committee,,2022-03-14,HB747
+2022,FL,HB 747,Religious Exemptions in Healthcare Implicating LGBTQ People,harmful,aclu,Died in committee,,2022-03-14,H0747
 2022,KY,HB 495,Religious Exemptions in Healthcare Implicating LGBTQ People,harmful,aclu,Dead,,2022-04-14,HB495
 2022,SC,HB 3518,Religious Exemptions in Healthcare Implicating LGBTQ People,harmful,aclu,Dead,,2022-05-12,H3518
 2022,SC,S 811,Religious Exemptions in Healthcare Implicating LGBTQ People,harmful,aclu,Dead,,2022-05-12,S811
@@ -391,7 +391,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2022,AK,HB 17,Nondiscrimination protections,supportive,aclu,Dead,,2022-05-18,HB17
 2022,AK,SB 149,Nondiscrimination protections,supportive,aclu,Dead,,2022-05-18,SB149
 2022,AZ,HB 2630,Nondiscrimination protections,supportive,aclu,Dead,,2022-06-25,HB2630
-2022,FL,HB 1597,Nondiscrimination protections,supportive,aclu,Died in committee,,2022-03-14,HB1597
+2022,FL,HB 1597,Nondiscrimination protections,supportive,aclu,Died in committee,,2022-03-14,H1597
 2022,ID,H 440,Nondiscrimination protections,supportive,aclu,Dead,,2022-03-31,H440
 2022,MI,HB 5349,Nondiscrimination protections,supportive,aclu,Active,,2022-01-12,HB5349
 2022,MO,HB 1760,Nondiscrimination protections,supportive,aclu,Dead,,2022-05-13,HB1760
@@ -712,10 +712,10 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2023,IN,SB 487,Other anti-LGBTQ bills,harmful,aclu,Defeated,Dead,2023-04-28,SB487
 2023,IA,SF 538,Healthcare restrictions |,harmful,aclu,Passed into Law,Governor signed,2023-03-22,SF538
 2023,UT,SB 39,Barriers to accurate IDs |,harmful,aclu,Passed into Law,Governor signed,2023-03-15,SB39
-2023,FL,HB 1521,Other anti-LGBTQ bills | Public accommodation bans,harmful,aclu,Passed into Law,Governor signed,2023-05-17,HB1521
-2023,FL,SB 1674,Other anti-LGBTQ bills | Public accommodation bans | Restricting student & educator rights,harmful,aclu,Defeated,Dead,2023-05-05,SB1674
-2023,FL,HB 1421,Barriers to accurate IDs | Healthcare restrictions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Dead,2023-05-05,HB1421
-2023,FL,SB 254,Healthcare restrictions | Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2023-05-17,SB254
+2023,FL,HB 1521,Other anti-LGBTQ bills | Public accommodation bans,harmful,aclu,Passed into Law,Governor signed,2023-05-17,H1521
+2023,FL,SB 1674,Other anti-LGBTQ bills | Public accommodation bans | Restricting student & educator rights,harmful,aclu,Defeated,Dead,2023-05-05,S1674
+2023,FL,HB 1421,Barriers to accurate IDs | Healthcare restrictions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Dead,2023-05-05,H1421
+2023,FL,SB 254,Healthcare restrictions | Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2023-05-17,S0254
 2023,TX,HB 3213,Other anti-LGBTQ bills,harmful,aclu,Defeated,Dead,2023-05-29,HB3213
 2023,IA,HF 623,Healthcare restrictions |,harmful,aclu,Defeated,SF 538 substituted and bill withdrawn,2023-03-08,HF623
 2023,IA,SF 482,Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2023-03-22,SF482
@@ -727,18 +727,18 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2023,KS,SB 228,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Senate and House override of Governor veto,2023-04-27,SB228
 2023,MO,HB 1258,Restricting student & educator rights | Weakening Civil Rights Laws,harmful,aclu,Defeated,Dead,2023-05-12,HB1258
 2023,IA,HSB 208,Restricting student & educator rights,harmful,aclu,Defeated,Refer to renumbered bill HF 622,2023-03-16,HSB208
-2023,FL,SB 266,Free speech & expression bans | Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2023-05-15,SB266
-2023,FL,HB 999,Free speech & expression bans | Restricting student & educator rights,harmful,aclu,Defeated,Dead,2023-05-05,HB999
-2023,FL,SB 1320,Restricting student & educator rights,harmful,aclu,Defeated,Dead,2023-05-05,SB1320
-2023,FL,HB 1223,Restricting student & educator rights,harmful,aclu,Advancing,Died in committee,2023-05-05,HB1223
+2023,FL,SB 266,Free speech & expression bans | Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2023-05-15,S0266
+2023,FL,HB 999,Free speech & expression bans | Restricting student & educator rights,harmful,aclu,Defeated,Dead,2023-05-05,H0999
+2023,FL,SB 1320,Restricting student & educator rights,harmful,aclu,Defeated,Dead,2023-05-05,S1320
+2023,FL,HB 1223,Restricting student & educator rights,harmful,aclu,Advancing,Died in committee,2023-05-05,H1223
 2023,MO,HB 1332,Healthcare restrictions |,harmful,aclu,Defeated,Dead,2023-05-12,HB1332
 2023,IA,HSB 214,Healthcare restrictions |,harmful,aclu,Defeated,Bill renumbered HF 623,2023-03-02,HSB214
 2023,IA,SSB 1197,Healthcare restrictions |,harmful,aclu,Defeated,Bill renumbered SF 538,2023-03-02,SSB1197
 2023,MO,SB 693,Free speech & expression bans |,harmful,aclu,Defeated,Dead,2023-05-12,SB693
 2023,UT,HB 209,Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2023-03-17,HB209
-2023,FL,HB 1069,Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2023-05-17,HB1069
+2023,FL,HB 1069,Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2023-05-17,H1069
 2023,MT,SB 458,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2023-05-19,SB458
-2023,FL,HB 991,Other anti-LGBTQ bills,harmful,aclu,Advancing,Died in committee,2023-05-05,HB991
+2023,FL,HB 991,Other anti-LGBTQ bills,harmful,aclu,Advancing,Died in committee,2023-05-05,H0991
 2023,TX,SB 1082,Barriers to accurate IDs | Other anti-LGBTQ bills,harmful,aclu,Defeated,Dead,2023-05-29,SB1082
 2023,KY,HB 585,Barriers to accurate IDs |,harmful,aclu,Defeated,Dead,2023-03-30,HB585
 2023,UT,HB 463,Restricting student & educator rights,harmful,aclu,Defeated,Passed House; passed Senate; referred to House file,2023-03-03,HB463
@@ -970,7 +970,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,VA,H.B. 1229,Public accommodation bans | Restricting student & educator rights | School facilities bans | School sports bans,harmful,aclu,Defeated,Legislative session ended,2025-02-22,HB1229
 2024,VA,H.B. 8,Healthcare restrictions | Other healthcare barriers | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2025-02-22,HB8
 2024,VA,S.B. 749,Restricting student & educator rights | School sports bans,harmful,aclu,Defeated,Legislative session ended,2025-02-22,SB749
-2024,FL,H.B. 1425,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2024-04-26,HB1425
+2024,FL,H.B. 1425,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2024-04-26,H1425
 2024,NJ,A.2580,Curriculum censorship | Restricting student & educator rights,harmful,aclu,Advancing,"Legislative session adjourned, carries over to 2025,",2024-12-19,A2580
 2024,NJ,A.531,Curriculum censorship | Restricting student & educator rights,harmful,aclu,Introduced,,2024-01-10,A531
 2024,NJ,A.410,Other school restrictions | Restricting student & educator rights,harmful,aclu,Introduced,Referred to committee,2024-01-09,A410
@@ -1112,8 +1112,8 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,HI,H.B.291,Barriers to accurate IDs |,harmful,aclu,Defeated,Legislative session ended,2024-05-03,HB291
 2024,GA,H.B.836,Restricting student & educator rights | School facilities bans,harmful,aclu,Defeated,Legislative session ended,2024-03-28,HB836
 2024,GA,H.B.936,Restricting student & educator rights | School facilities bans,harmful,aclu,Defeated,Legislative session ended,2024-03-28,HB936
-2024,FL,H.B. 1027,Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Died in subcommittee,2024-03-08,HB1027
-2024,FL,S.B. 1728,Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Died in committee,2024-03-08,SB1728
+2024,FL,H.B. 1027,Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Died in subcommittee,2024-03-08,H1027
+2024,FL,S.B. 1728,Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Died in committee,2024-03-08,S1728
 2024,MO,H.B. 1520,Healthcare age restrictions | Healthcare restrictions |,harmful,aclu,Defeated,Legislative session ended,2024-05-17,HB1520
 2024,IL,H.B.5830,Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-05-29,HB5830
 2024,AL,H.B.130,Curriculum censorship | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session ended,2024-05-09,HB130
@@ -1146,7 +1146,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,WI,AB 378,Restricting student & educator rights | School sports bans,harmful,aclu,Defeated,Legislative session ended,2024-03-12,AB378
 2024,ID,H.538,Forced outing in schools | Other anti-LGBTQ bills | Other school restrictions | Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2024-04-08,H538
 2024,ID,H.421,Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Governor signed,2024-04-09,H421
-2024,FL,H.B. 433,Other civil rights restrictions | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Governor signed,2024-04-11,HB433
+2024,FL,H.B. 433,Other civil rights restrictions | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Governor signed,2024-04-11,H0433
 2024,TN,S.B.2350,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-04-25,SB2350
 2024,TN,H.B.1948,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-04-25,HB1948
 2024,ID,S.1352,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Governor signed,2024-03-21,S1352
@@ -1222,7 +1222,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,MO,H.B. 2309,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-05-17,HB2309
 2024,KY,S.B.336,Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-04-15,SB336
 2024,ID,H.669,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-04-10,H669
-2024,FL,H.B. 1639,Barriers to accurate IDs |,harmful,aclu,Defeated,Died in committee,2024-03-08,HB1639
+2024,FL,H.B. 1639,Barriers to accurate IDs |,harmful,aclu,Defeated,Died in committee,2024-03-08,H1639
 2024,RI,S.B.2703,Healthcare age restrictions | Healthcare funding restrictions | Healthcare restrictions | Other healthcare barriers,harmful,aclu,Defeated,Legislative session ended,2024-06-14,S2703
 2024,RI,S.B.2660,Restricting student & educator rights | School sports bans,harmful,aclu,Defeated,Legislative session ended,2024-06-14,S2660
 2024,OK,S.B.1530,Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-05-30,SB1530
@@ -1231,7 +1231,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,ID,H.520,Healthcare funding restrictions | Healthcare restrictions | Prison healthcare restrictions,harmful,aclu,Defeated,Legislative session ended,2024-04-10,H520
 2024,IA,H.F.2454,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Companion bill passed into law,2024-04-02,HF2454
 2024,GA,S.B.532,Curriculum censorship | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session ended,2024-02-29,SB532
-2024,FL,S.B. 1352,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Companion bill passed into law,2024-04-26,SB1352
+2024,FL,S.B. 1352,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Companion bill passed into law,2024-04-26,S1352
 2024,ID,H.672,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-04-10,H672
 2024,SC,S.B.0332,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-05-09,S332
 2024,WV,S.B.870,Other anti-LGBTQ bills | Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session ended,2024-03-09,SB870
@@ -1287,7 +1287,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,IA,H.F.2389,Barriers to accurate IDs | Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-04-20,HF2389
 2024,WV,H.B.5484,Curriculum censorship | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session ended,2024-03-09,HB5484
 2024,OK,H.B.3219,Barriers to accurate IDs |,harmful,aclu,Defeated,Legislative session ended,2024-05-30,HB3219
-2024,FL,S.B. 1780,Other civil rights restrictions | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in committee,2024-03-08,SB1780
+2024,FL,S.B. 1780,Other civil rights restrictions | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in committee,2024-03-08,S1780
 2024,OK,H.B.3135,Curriculum censorship | Other anti-LGBTQ bills | Restricting student & educator rights,harmful,aclu,Defeated,Failed to meet House deadline,2024-02-29,HB3135
 2024,OK,H.B.3217,Free speech & expression bans | Other expression restrictions,harmful,aclu,Defeated,Legislative session ended,2024-05-30,HB3217
 2024,OK,H.B.3543,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Failed to meet Senate deadline,2024-02-29,HB3543
@@ -1295,7 +1295,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,HI,H.B.2731,Restricting student & educator rights | School sports bans,harmful,aclu,Defeated,Legislative session ended,2024-05-03,HB2731
 2024,HI,H.B.1715,Forced outing in schools | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session ended,2024-05-03,HB1715
 2024,WV,H.B.5442,Other school restrictions | Re-definition of sex | Restricting student & educator rights | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-03-09,HB5442
-2024,FL,S.B. 1120,Free speech & expression bans | Other expression restrictions,harmful,aclu,Defeated,Died in committee,2024-03-08,SB1120
+2024,FL,S.B. 1120,Free speech & expression bans | Other expression restrictions,harmful,aclu,Defeated,Died in committee,2024-03-08,S1120
 2024,GA,S.B.438,Restricting student & educator rights | School facilities bans | School sports bans,harmful,aclu,Defeated,Legislative session ended,2024-03-28,SB438
 2024,MO,H.B. 1519,Healthcare restrictions | Other healthcare barriers | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-05-17,HB1519
 2024,MO,H.B. 2355,Forced outing in schools | Restricting student & educator rights | School facilities bans,harmful,aclu,Defeated,Legislative session ended,2024-05-17,HB2355
@@ -1357,12 +1357,12 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,IA,S.F.2055,Public accommodation bans,harmful,aclu,Defeated,Legislative session ended,2024-04-20,SF2055
 2024,AZ,H.B.2391,Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-06-15,HB2391
 2024,IL,H.B.4122,Other civil rights restrictions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-05-29,HB4122
-2024,FL,H.B. 901,Free speech & expression bans | Other expression restrictions,harmful,aclu,Defeated,Died in committee,2024-03-08,HB901
+2024,FL,H.B. 901,Free speech & expression bans | Other expression restrictions,harmful,aclu,Defeated,Died in committee,2024-03-08,H0901
 2024,SC,H.B.4663,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-05-09,H4663
 2024,WV,H.B.5036,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-03-09,HB5036
 2024,KY,H.B.49,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-04-15,HB49
-2024,FL,H.B. 1233,Barriers to accurate IDs | Other anti-LGBTQ bills | Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in committee,2024-03-08,HB1233
-2024,FL,H.B. 1663,Other anti-LGBTQ bills,harmful,aclu,Defeated,Died in subcommittee,2024-03-08,HB1663
+2024,FL,H.B. 1233,Barriers to accurate IDs | Other anti-LGBTQ bills | Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in committee,2024-03-08,H1233
+2024,FL,H.B. 1663,Other anti-LGBTQ bills,harmful,aclu,Defeated,Died in subcommittee,2024-03-08,H1663
 2024,OK,S.B.1303,Other anti-LGBTQ bills,harmful,aclu,Defeated,Failed to meet Senate deadline,2024-02-29,SB1303
 2024,WV,H.B.4923,Healthcare age restrictions | Healthcare restrictions | Other healthcare barriers,harmful,aclu,Defeated,Legislative session ended,2024-03-09,HB4923
 2024,WV,H.B.4922,Healthcare age restrictions | Healthcare restrictions |,harmful,aclu,Defeated,Legislative session ended,2024-03-09,HB4922
@@ -1380,9 +1380,9 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2024,WA,SB 5653,Curriculum censorship | Forced outing in schools | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session ended,2024-03-07,SB5653
 2024,PR,PS 1345,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Introduced,Carried over,2024-01-08,PS1345
 2024,PR,PC 1887,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-11-19,PC1887
-2024,FL,H.B. 599,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in subcommittee,2024-03-08,HB599
-2024,FL,S.B. 1722,Other anti-LGBTQ bills,harmful,aclu,Defeated,Died in committee,2024-03-08,SB1722
-2024,FL,S.B. 1382,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in committee,2024-03-08,SB1382
+2024,FL,H.B. 599,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in subcommittee,2024-03-08,H0599
+2024,FL,S.B. 1722,Other anti-LGBTQ bills,harmful,aclu,Defeated,Died in committee,2024-03-08,S1722
+2024,FL,S.B. 1382,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Died in committee,2024-03-08,S1382
 2024,IN,H.B.1406,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session ended,2024-03-08,HB1406
 2024,IN,H.B.1291,Barriers to accurate IDs | Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-03-08,HB1291
 2024,MO,S.B. 868,Forced outing in schools | Other school restrictions | Religious exemptions | Restricting student & educator rights | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2024-05-17,SB868
@@ -1764,12 +1764,12 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2025,TX,H.B. 18,Healthcare age restrictions | Healthcare restrictions |,harmful,aclu,Passed into Law,Governor signed,2025-06-20,HB18
 2025,TX,S.B. 1188,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2025-06-20,SB1188
 2025,LA,H.B.371,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Governor signed,2025-06-20,HB371
-2025,FL,H.B. 731,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,HB731
-2025,FL,H.B. 75,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,HB75
-2025,FL,S.B. 440,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,SB440
-2025,FL,S.B. 1710,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,SB1710
-2025,FL,H.B. 1307,Restricting student & educator rights | School facilities bans,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,HB1307
-2025,FL,H.B. 1495,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,HB1495
+2025,FL,H.B. 731,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,H0731
+2025,FL,H.B. 75,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,H0075
+2025,FL,S.B. 440,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,S0440
+2025,FL,S.B. 1710,Other anti-LGBTQ bills,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,S1710
+2025,FL,H.B. 1307,Restricting student & educator rights | School facilities bans,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,H1307
+2025,FL,H.B. 1495,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,H1495
 2025,CT,S.B.504,Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session adjourned,2025-06-04,SB00504
 2025,IA,H.F.1049,Healthcare funding restrictions | Healthcare restrictions |,harmful,aclu,Passed into Law,Governor signed,2025-06-11,HF1049
 2025,ND,H.B. 1144,Restricting student & educator rights | School facilities bans,harmful,aclu,Passed into Law,Governor signed,2025-05-02,HB1144
@@ -1931,7 +1931,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2025,ID,H.264,Other anti-LGBTQ bills | Restricting student & educator rights | School facilities bans,harmful,aclu,Passed into Law,Governor signed,2025-04-02,H264
 2025,ID,H.59,Healthcare restrictions | Other healthcare barriers | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Passed into Law,Governor signed,2025-03-20,H59
 2025,ID,H.41,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Passed into Law,Governor signed,2025-03-20,H41
-2025,FL,S.B. 100,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,SB100
+2025,FL,S.B. 100,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Defeated,Legislative session adjourned,2025-06-16,S0100
 2025,AR,H.B.1307,Other anti-LGBTQ bills,harmful,aclu,Passed into Law,Governor signed,2025-03-18,HB1307
 2025,AR,H.B.1668,Healthcare age restrictions | Healthcare restrictions | Other healthcare barriers,harmful,aclu,Defeated,Legislative session ended,2025-04-16,HB1668
 2025,AZ,H.B.2062,Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Defeated,Legislative session ended,2025-06-27,HB2062
@@ -2161,10 +2161,10 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2026,HI,H.B.257,Barriers to accurate IDs |,harmful,aclu,Introduced,Carried over,2026-01-21,HB257
 2026,HI,H.B.268,Restricting student & educator rights | School sports bans,harmful,aclu,Introduced,Carried over,2026-01-21,HB268
 2026,HI,H.B.207,Restricting student & educator rights | School sports bans,harmful,aclu,Introduced,Carried over,2026-01-21,HB207
-2026,FL,S.B. 1134,Other anti-LGBTQ bills,harmful,aclu,Advancing,On Senate committee agenda,2026-02-03,SB1134
-2026,FL,S.B. 1566,Other anti-LGBTQ bills,harmful,aclu,Advancing,Senate referred to committee,2026-01-16,SB1566
-2026,FL,S.B. 1642,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,On Senate committee agenda,2026-02-02,SB1642
-2026,FL,S.B. 1444,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,Reported favorably and re-referred to Senate committee,2026-01-28,SB1444
+2026,FL,S.B. 1134,Other anti-LGBTQ bills,harmful,aclu,Advancing,On Senate committee agenda,2026-02-03,S1134
+2026,FL,S.B. 1566,Other anti-LGBTQ bills,harmful,aclu,Advancing,Senate referred to committee,2026-01-16,S1566
+2026,FL,S.B. 1642,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,On Senate committee agenda,2026-02-02,S1642
+2026,FL,S.B. 1444,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,Reported favorably and re-referred to Senate committee,2026-01-28,S1444
 2026,AZ,H.C.R.2044,Other school restrictions | Restricting student & educator rights,harmful,aclu,Advancing,House second read,2026-01-26,HCR2044
 2026,AZ,S.B.1015,Healthcare restrictions | Other healthcare barriers,harmful,aclu,Advancing,Senate consent by Minority and Majority Caucus,2026-01-27,SB1015
 2026,AZ,H.B.2249,Forced outing in schools | Restricting student & educator rights,harmful,aclu,Advancing,House consent by Minority and Majority Caucus,2026-01-27,HB2249
@@ -2191,7 +2191,7 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2026,MD,H.B.0063,Restricting student & educator rights | School facilities bans | School sports bans,harmful,aclu,Advancing,House hearing,2026-02-05,HB63
 2026,KY,H.B.334,Other civil rights restrictions | Re-definition of sex | Weakening Civil Rights Laws,harmful,aclu,Advancing,Referred to House committee,2026-01-21,HB334
 2026,IA,S.F.2003,Curriculum censorship | Restricting student & educator rights,harmful,aclu,Advancing,Reported favorably by Senate subcommittee,2026-01-21,SF2003
-2026,FL,H.B. 743,Healthcare age restrictions | Healthcare restrictions |,harmful,aclu,Advancing,House first read as substituted and referred to subcommittee,2026-01-21,HB743
+2026,FL,H.B. 743,Healthcare age restrictions | Healthcare restrictions |,harmful,aclu,Advancing,House first read as substituted and referred to subcommittee,2026-01-21,H0743
 2026,AZ,H.C.R.2003,Restricting student & educator rights | School facilities bans | School sports bans,harmful,aclu,Advancing,Reported favorably by House committee,2026-01-20,HCR2003
 2026,AZ,H.B.2589,Drag bans | Free speech & expression bans |,harmful,aclu,Advancing,House second read,2026-01-21,HB2589
 2026,AZ,S.B.1177,Healthcare funding restrictions | Healthcare restrictions |,harmful,aclu,Advancing,Senate second read,2026-01-21,SB1177
@@ -2264,12 +2264,12 @@ year,state,bill_name,issues,label,source,status,status_detail,status_date,bill_n
 2026,IN,H.B.1427,Healthcare restrictions | Other healthcare barriers,harmful,aclu,Advancing,First read and referred to committee,2026-01-08,HB1427
 2026,IN,H.B.1362,Other anti-LGBTQ bills | Public accommodation bans | Restricting student & educator rights | School facilities bans,harmful,aclu,Advancing,House first read and referred to committee,2026-01-08,HB1362
 2026,IL,H.B.4241,Other school restrictions | Restricting student & educator rights,harmful,aclu,Advancing,House first read and referred to committee,2026-01-14,HB4241
-2026,FL,H.B. 347,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Advancing,House first read,2026-01-13,HB347
-2026,FL,S.B. 426,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Introduced,,2026-01-13,SB426
-2026,FL,H.B. 641,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,House first read,2026-01-13,HB641
-2026,FL,H.B. 1001,Other anti-LGBTQ bills,harmful,aclu,Advancing,House first read,2026-01-13,HB1001
-2026,FL,H.B. 1227,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,Referred to House subcommittee,2026-01-15,HB1227
-2026,FL,H.B. 1329,Other anti-LGBTQ bills,harmful,aclu,Advancing,Referred to House subcommittee,2026-01-15,HB1329
+2026,FL,H.B. 347,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Advancing,House first read,2026-01-13,H0347
+2026,FL,S.B. 426,Free speech & expression bans | Other expression restrictions | Other school restrictions | Restricting student & educator rights,harmful,aclu,Introduced,,2026-01-13,S0426
+2026,FL,H.B. 641,Other anti-LGBTQ bills | Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,House first read,2026-01-13,H0641
+2026,FL,H.B. 1001,Other anti-LGBTQ bills,harmful,aclu,Advancing,House first read,2026-01-13,H1001
+2026,FL,H.B. 1227,Religious exemptions | Weakening Civil Rights Laws,harmful,aclu,Advancing,Referred to House subcommittee,2026-01-15,H1227
+2026,FL,H.B. 1329,Other anti-LGBTQ bills,harmful,aclu,Advancing,Referred to House subcommittee,2026-01-15,H1329
 2026,CT,S.B.872,Restricting student & educator rights | School sports bans,harmful,aclu,Introduced,Pre-filed,2026-02-04,SB00872
 2026,AZ,S.B.1094,Healthcare restrictions | Other healthcare barriers,harmful,aclu,Advancing,Senate second read,2026-01-14,SB1094
 2026,AZ,S.B.1099,Healthcare restrictions | Other healthcare barriers,harmful,aclu,Advancing,Senate second read,2026-01-14,SB1099
