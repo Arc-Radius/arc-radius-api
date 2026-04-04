@@ -7,10 +7,10 @@ WITH s, collect(b) AS bills
 WITH
   s,
   size([x IN bills WHERE x IS NOT NULL AND NOT (
-        coalesce(x.passed, false) = true OR toLower(trim(toString(coalesce(x.passed, '')))) IN ['true', '1', 'yes']
+        x.status = 4
       )]) AS activeBills,
   size([x IN bills WHERE x IS NOT NULL AND (
-        coalesce(x.passed, false) = true OR toLower(trim(toString(coalesce(x.passed, '')))) IN ['true', '1', 'yes']
+        x.status = 4
       )]) AS passedBills,
   size([x IN bills WHERE x IS NOT NULL AND x.label = 'supportive']) AS supportiveCount,
   size([x IN bills WHERE x IS NOT NULL AND x.label = 'harmful']) AS harmfulCount
@@ -58,10 +58,10 @@ WHERE b.state = state
   AND (
     tab IS NULL
     OR (tab = 'passed' AND (
-          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+          b.status = 4
         ))
     OR (tab = 'active' AND NOT (
-          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+          b.status = 4
         ))
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
@@ -100,8 +100,7 @@ RETURN collect({
   title: coalesce(b.title, ''),
   description: coalesce(b.description, ''),
   stance: coalesce(b.label, 'mixed'),
-  billTab: CASE WHEN coalesce(b.passed, false) = true
-             OR toLower(toString(b.passed)) IN ['true', '1', 'yes'] THEN 'passed' ELSE 'active' END,
+  billTab: CASE WHEN b.status = 4 THEN 'passed' ELSE 'active' END,
   status: coalesce(toString(b.status), ''),
   status_desc: coalesce(b.status_desc, ''),
   last_action: coalesce(b.last_action, ''),
@@ -129,10 +128,10 @@ WHERE b.state = state
   AND (
     tab IS NULL
     OR (tab = 'passed' AND (
-          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+          b.status = 4
         ))
     OR (tab = 'active' AND NOT (
-          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+          b.status = 4
         ))
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
@@ -175,10 +174,10 @@ WHERE b.state = state
   AND (
     tab IS NULL
     OR (tab = 'passed' AND (
-          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+          b.status = 4
         ))
     OR (tab = 'active' AND NOT (
-          coalesce(b.passed, false) = true OR toLower(toString(b.passed)) IN ['true', '1', 'yes']
+          b.status = 4
         ))
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
@@ -240,8 +239,7 @@ RETURN {
     relatedBills: [],
     keyDates: [],
     sponsorContact: null,
-    billTab: CASE WHEN coalesce(b.passed, false) = true
-             OR toLower(toString(b.passed)) IN ['true', '1', 'yes'] THEN 'passed' ELSE 'active' END
+    billTab: CASE WHEN b.status = 4 THEN 'passed' ELSE 'active' END
   },
   graphRecord: properties(b)
 } AS payload

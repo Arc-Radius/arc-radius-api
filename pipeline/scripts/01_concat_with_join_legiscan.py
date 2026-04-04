@@ -39,11 +39,11 @@ from pathlib import Path
 
 REQUIRED_FILES = ["bills.csv", "people.csv", "sponsors.csv", "history.csv", "documents.csv", "rollcalls.csv"]
 
-BULK_CSV_ROOT = (Path(__file__).parent / ".." / "legiscan-bulk-csv").resolve()
+BULK_CSV_ROOT = (Path(__file__).parent / ".." / ".." / "datasources" / "legiscan-bulk-csv").resolve()
 DEFAULT_ZIPS = sorted(BULK_CSV_ROOT.glob("*.zip"))
 
-OUTPUT_DIR = (Path(__file__).parent / ".." / "legiscan-joined-by-state-session").resolve()
-COMBINED_PATH = (Path(__file__).parent / ".." / "legiscan-joined-all" / "all_bills_2021_2026.csv").resolve()
+OUTPUT_DIR = (Path(__file__).parent / ".." / ".." / "datasources" / "legiscan-joined-by-state-session").resolve()
+COMBINED_PATH = (Path(__file__).parent / ".." / ".." / "datasources" / "legiscan-joined-all" / "all_bills_2021_2026.csv").resolve()
 
 # Helper functions
 
