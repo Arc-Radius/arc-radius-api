@@ -44,10 +44,9 @@ bill-text/
 
 helpful_queries.txt
 
-#all eval bill file match
+# all eval bill file match
 graph/output/
 backend/graph/output/
 
-poetry.lock
 
 neo4j.dump

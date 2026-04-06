@@ -6,25 +6,59 @@ OPTIONAL MATCH (b:Bill)-[:IN_STATE]->(s)
 WITH s, collect(b) AS bills
 WITH
   s,
-  size([x IN bills WHERE x IS NOT NULL AND NOT (
-        x.status = 4
-      )]) AS activeBills,
-  size([x IN bills WHERE x IS NOT NULL AND (
-        x.status = 4
-      )]) AS passedBills,
+  bills,
+  size([x IN bills WHERE x IS NOT NULL AND NOT (toInteger(x.status) = 4)]) AS activeBills,
+  size([x IN bills WHERE x IS NOT NULL AND (toInteger(x.status) = 4)]) AS passedBills,
   size([x IN bills WHERE x IS NOT NULL AND x.label = 'supportive']) AS supportiveCount,
-  size([x IN bills WHERE x IS NOT NULL AND x.label = 'harmful']) AS harmfulCount
+  size([x IN bills WHERE x IS NOT NULL AND x.label = 'harmful']) AS harmfulCount,
+  size(bills) AS totalBills
+
+// Get latest-year political features (most recent session per state)
+OPTIONAL MATCH (recent:Bill)-[:IN_STATE]->(s)
+WHERE recent.year IS NOT NULL
+WITH s, bills, activeBills, passedBills, supportiveCount, harmfulCount, totalBills, recent
+ORDER BY recent.year DESC
+WITH s, bills, activeBills, passedBills, supportiveCount, harmfulCount, totalBills,
+  collect(recent)[0] AS latestBill
+
+WITH s, activeBills, passedBills, supportiveCount, harmfulCount, totalBills,
+  latestBill.state_lean AS latestLean,
+  toFloat(latestBill.pass_rate_gap) AS latestPrg,
+  toFloat(latestBill.state_r_sponsorship_ratio) AS latestRsr
+
+// Combined status score: 40% bill ratio + 35% state lean + 25% pass rate gap
+WITH s, activeBills, passedBills, supportiveCount, harmfulCount, totalBills,
+  latestLean, latestPrg, latestRsr,
+  CASE WHEN totalBills > 0 THEN toFloat(harmfulCount) / totalBills ELSE 0.5 END AS hRatio,
+  CASE latestLean
+    WHEN 'Strong D' THEN -1.0
+    WHEN 'Lean D' THEN -0.5
+    WHEN 'Competitive' THEN 0.0
+    WHEN 'Lean R' THEN 0.5
+    WHEN 'Strong R' THEN 1.0
+    ELSE 0.0
+  END AS leanScore,
+  CASE
+    WHEN latestPrg > 0.05 THEN 1.0
+    WHEN latestPrg < -0.05 THEN -1.0
+    ELSE 0.0
+  END AS prgSignal
+
+WITH s, activeBills, passedBills, supportiveCount, harmfulCount,
+  latestLean, latestPrg, latestRsr,
+  0.4 * (hRatio * 2 - 1) + 0.35 * leanScore + 0.25 * prgSignal AS score
+
 OPTIONAL MATCH (sample:Bill)-[:IN_STATE]->(s)
 WHERE sample.state_link IS NOT NULL AND trim(sample.state_link) <> ''
-WITH s, activeBills, passedBills, supportiveCount, harmfulCount, sample
+WITH s, activeBills, passedBills, score, sample
 ORDER BY sample.last_action_date DESC
-WITH s, activeBills, passedBills, supportiveCount, harmfulCount, collect(sample)[0] AS latest
+WITH s, activeBills, passedBills, score, collect(sample)[0] AS latest
 RETURN {
   abbr: s.code,
   name: s.code,
   status: CASE
-    WHEN supportiveCount > harmfulCount THEN 'supportive'
-    WHEN harmfulCount > supportiveCount THEN 'harmful'
+    WHEN score < -0.25 THEN 'supportive'
+    WHEN score > 0.25 THEN 'harmful'
     ELSE 'mixed'
   END,
   legislature: '',
@@ -58,10 +92,10 @@ WHERE b.state = state
   AND (
     tab IS NULL
     OR (tab = 'passed' AND (
-          b.status = 4
+          toInteger(b.status) = 4
         ))
     OR (tab = 'active' AND NOT (
-          b.status = 4
+          toInteger(b.status) = 4
         ))
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
@@ -100,7 +134,7 @@ RETURN collect({
   title: coalesce(b.title, ''),
   description: coalesce(b.description, ''),
   stance: coalesce(b.label, 'mixed'),
-  billTab: CASE WHEN b.status = 4 THEN 'passed' ELSE 'active' END,
+  billTab: CASE WHEN toInteger(b.status) = 4 THEN 'passed' ELSE 'active' END,
   status: coalesce(toString(b.status), ''),
   status_desc: coalesce(b.status_desc, ''),
   last_action: coalesce(b.last_action, ''),
@@ -128,10 +162,10 @@ WHERE b.state = state
   AND (
     tab IS NULL
     OR (tab = 'passed' AND (
-          b.status = 4
+          toInteger(b.status) = 4
         ))
     OR (tab = 'active' AND NOT (
-          b.status = 4
+          toInteger(b.status) = 4
         ))
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
@@ -174,10 +208,10 @@ WHERE b.state = state
   AND (
     tab IS NULL
     OR (tab = 'passed' AND (
-          b.status = 4
+          toInteger(b.status) = 4
         ))
     OR (tab = 'active' AND NOT (
-          b.status = 4
+          toInteger(b.status) = 4
         ))
   )
 OPTIONAL MATCH (b)-[:HAS_TOPIC]->(t:Topic)
@@ -241,7 +275,7 @@ RETURN {
     relatedBills: [],
     keyDates: [],
     sponsorContact: null,
-    billTab: CASE WHEN b.status = 4 THEN 'passed' ELSE 'active' END
+    billTab: CASE WHEN toInteger(b.status) = 4 THEN 'passed' ELSE 'active' END
   },
   graphRecord: properties(b)
 } AS payload
