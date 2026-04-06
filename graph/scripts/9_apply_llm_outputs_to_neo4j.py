@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import re
 import sys
 from pathlib import Path
@@ -23,8 +24,6 @@ csv.field_size_limit(sys.maxsize)
 from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(_BACKEND_ROOT / ".env")
-
-from src.neo4j_graph.neo4j_client import Neo4j  # noqa: E402
 
 APPLY_CYPHER = """
 UNWIND $rows AS row
@@ -121,12 +120,37 @@ def main() -> None:
         default=100,
         help="Rows per UNWIND batch.",
     )
+    parser.add_argument(
+        "--uri",
+        type=str,
+        help="Override NEO4J_URI for this run (e.g., neo4j+s://... for Aura).",
+    )
+    parser.add_argument(
+        "--user",
+        type=str,
+        help="Override NEO4J_USER for this run.",
+    )
+    parser.add_argument(
+        "--password",
+        type=str,
+        help="Override NEO4J_PASSWORD for this run.",
+    )
     args = parser.parse_args()
     paths = _resolve_input_paths(args)
     print(f"[INFO] Input files ({len(paths)}): " + ", ".join(p.name for p in paths))
     rows = _load_rows(paths)
     if not rows:
         raise SystemExit("No data rows with bill_pk")
+
+    if args.uri:
+        os.environ["NEO4J_URI"] = args.uri
+    if args.user:
+        os.environ["NEO4J_USER"] = args.user
+    if args.password:
+        os.environ["NEO4J_PASSWORD"] = args.password
+
+    # Import after env overrides so module-scope driver picks up effective credentials.
+    from src.neo4j_graph.neo4j_client import Neo4j  # noqa: E402
 
     db = Neo4j()
     total = 0

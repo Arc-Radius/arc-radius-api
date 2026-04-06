@@ -54,6 +54,7 @@ Avoid:
 - Urgent, alarmist phrasing.
 - Giving legal advice.
 - Commenting on the status of the bill.
+- Saying when provisions would take effect.
 
 Grounding:
 - Explain using only information supported by the bill text.
@@ -119,8 +120,10 @@ Instructions:
 Output rules:
 - Use bullet points.
 - For each bullet, write exactly 2 sentences:
-  - Sentence 1: name the related bill and explain the concrete similarity.
+  - Sentence 1: name the related bill with its bill_pk and state code (for example, "TX:2160:1890827 (TX SB 2160)") and explain the concrete similarity.
   - Sentence 2: note an important difference or limitation in the match.
+- The state code for the related bill is required in every bullet.
+- The related bill's bill_pk is required in every bullet.
 - After each bullet, add a new line with: Confidence: low, medium, or high
 - Do not add any text before or after the bullet list.
 """.strip(),
@@ -153,6 +156,50 @@ def _build_shared_bill_meta(ranked, meta):
     return first_meta
 
 
+def _safe(value):
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _format_current_bill_block(bill_meta: dict) -> str:
+    return (
+        "Current bill:\n"
+        f"- Bill ID: {_safe(bill_meta.get('bill_pk'))}\n"
+        f"- State: {_safe(bill_meta.get('state'))}\n"
+        f"- Bill number: {_safe(bill_meta.get('bill_number'))}\n"
+        f"- Title: {_safe(bill_meta.get('title'))}\n"
+    )
+
+
+def _build_labeled_context_block(
+    *,
+    bill_meta: dict,
+    bill_text_or_chunks: str,
+    candidate_records: str | None = None,
+) -> str:
+    parts = [
+        _format_current_bill_block(bill_meta),
+        "Trusted source materials:",
+        "<bill_text>",
+        _safe(bill_text_or_chunks),
+        "</bill_text>",
+    ]
+
+    if candidate_records is not None:
+        parts.extend(
+            [
+                "",
+                "For related-bill tasks only:",
+                "<candidate_related_bills>",
+                _safe(candidate_records),
+                "</candidate_related_bills>",
+            ]
+        )
+
+    return "\n".join(parts)
+
+
 def _build_default_prompt(query: str, context: str) -> str:
     return (
         "Use only the bill records below as evidence.\n\n"
@@ -162,13 +209,13 @@ def _build_default_prompt(query: str, context: str) -> str:
     )
 
 
-def _build_task_prompt(task: str, query: str, context: str) -> str:
+def _build_task_prompt(task: str, query: str, context_block: str) -> str:
     if task not in TASK_PROMPTS:
         raise ValueError(f"Unsupported generation task: {task}")
 
     return (
         f"{TASK_PROMPTS[task]}\n\n"
-        f"Bill records:\n{context}\n\n"
+        f"{context_block}\n\n"
         f"User request:\n{query}\n\n"
         "If evidence is missing, do not make up information."
     )
@@ -178,9 +225,20 @@ def _build_task_prompt_template(task: str, query: str) -> str:
     if task not in TASK_PROMPTS:
         raise ValueError(f"Unsupported generation task: {task}")
 
+    context_template = _build_labeled_context_block(
+        bill_meta={
+            "bill_pk": "{bill_id}",
+            "state": "{state}",
+            "bill_number": "{bill_number}",
+            "title": "{title}",
+        },
+        bill_text_or_chunks="{bill_text_or_chunks}",
+        candidate_records="{candidate_records}" if task == "bill_related" else None,
+    )
+
     return (
         f"{TASK_PROMPTS[task]}\n\n"
-        "Bill records:\n{context}\n\n"
+        f"{context_template}\n\n"
         f"User request:\n{query}\n\n"
         "If evidence is missing, do not make up information."
     )
@@ -216,15 +274,21 @@ def query_and_generate_task(
             bill_pk)
         _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(
             bill_pk, top=3)
-        context = (
-            f"Current bill semantic anchor chunks (top 3):\n{anchor_context}\n\n"
-            f"Candidate related bill records:\n{related_context}"
+        bill_meta = _build_shared_bill_meta(ranked, meta) or {"bill_pk": bill_pk}
+        context_block = _build_labeled_context_block(
+            bill_meta=bill_meta,
+            bill_text_or_chunks=_limit_context_length(anchor_context or ""),
+            candidate_records=_limit_context_length(related_context or ""),
         )
-        context = _limit_context_length(context)
     else:
         ranked, meta, context = graph_rag_query_for_bill(bill_pk)
-        context = _limit_context_length(context)
-    prompt = _build_task_prompt(task=task, query=query, context=context)
+        bill_meta = _build_shared_bill_meta(ranked, meta) or {"bill_pk": bill_pk}
+        context_block = _build_labeled_context_block(
+            bill_meta=bill_meta,
+            bill_text_or_chunks=_limit_context_length(context or ""),
+        )
+    prompt = _build_task_prompt(
+        task=task, query=query, context_block=context_block)
     prompt_template = _build_task_prompt_template(task=task, query=query)
 
     system = SYSTEM_PROMPT
