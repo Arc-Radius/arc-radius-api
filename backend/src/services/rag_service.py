@@ -147,21 +147,23 @@ Formatting rules:
 
 If Email:
 - include subject line
-- include greeting
-- include closing
+- include greeting with "Dear [Representative/Senator name if available]"
+- 2-3 paragraphs: introduce yourself and position, explain why using bill details, make a clear request
+- include a respectful closing with signature placeholder [Your Name]
 
 If Phone:
-- spoken style
-- under 90 seconds
-- greeting + request + reason + thanks
+- spoken conversational style, not a script to read verbatim
+- 45-90 seconds when spoken aloud
+- structure: greeting, state your name and that you are a constituent, state your position on the bill, give 2-3 specific reasons referencing the bill content, make a clear ask, thank them
+- do not use bullet points, write as flowing speech
 
 The message must:
 - clearly state the user's position
-- keep it to 2-3 sentences
-- describe the bill broadly and not in detail
-- include one clear request
+- reference specific provisions or effects from the bill text
+- include one clear request (vote yes/no, amend, etc.)
 - stay respectful
-- stay grounded in provided information""".strip(),
+- stay grounded in provided information
+- be substantive enough to show the caller/writer has read the bill""".strip(),
 }
 
 
@@ -319,7 +321,8 @@ def query_and_generate_task(
             bill_pk)
         _, _, anchor_context = graph_semantic_anchor_chunks_for_bill(
             bill_pk, top=3)
-        bill_meta = _build_shared_bill_meta(ranked, meta) or {"bill_pk": bill_pk}
+        bill_meta = _build_shared_bill_meta(ranked, meta) or {
+            "bill_pk": bill_pk}
         context_block = _build_labeled_context_block(
             bill_meta=bill_meta,
             bill_text_or_chunks=_limit_context_length(anchor_context or ""),
@@ -327,7 +330,8 @@ def query_and_generate_task(
         )
     else:
         ranked, meta, context = graph_rag_query_for_bill(bill_pk)
-        bill_meta = _build_shared_bill_meta(ranked, meta) or {"bill_pk": bill_pk}
+        bill_meta = _build_shared_bill_meta(ranked, meta) or {
+            "bill_pk": bill_pk}
         context_block = _build_labeled_context_block(
             bill_meta=bill_meta,
             bill_text_or_chunks=_limit_context_length(context or ""),
