@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 from src.db.cypher import ui_queries as Q
@@ -98,6 +100,82 @@ def _normalize_graph_props(props: dict[str, Any]) -> dict[str, Any]:
     if bid is not None and not isinstance(bid, str):
         out["bill_id"] = str(bid)
     return out
+
+
+def _related_bills_from_llm_json(graph_raw: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parse `llm_related_bills_json` into UI `relatedBills` items."""
+    raw = graph_raw.get("llm_related_bills_json")
+    if not raw or not isinstance(raw, str):
+        return []
+
+    # Backward compatibility with prior JSON-array format.
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        data = None
+
+    if isinstance(data, list):
+        out: list[dict[str, Any]] = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            pk = item.get("bill_pk") or item.get("billPk")
+            if not pk:
+                continue
+            summ = str(item.get("summary") or "")
+            conf = str(item.get("confidence") or "medium").lower()
+            if conf not in ("high", "medium", "low"):
+                conf = "medium"
+            out.append({"billPk": str(pk), "summary": summ, "confidence": conf})
+        return out
+
+    # New format: markdown-like bullet list with bill PK and confidence lines.
+    block_starts = [m.start() for m in re.finditer(r"(?m)^-\s+", raw)]
+    if not block_starts:
+        return []
+    block_starts.append(len(raw))
+
+    out: list[dict[str, Any]] = []
+    for idx in range(len(block_starts) - 1):
+        block = raw[block_starts[idx]: block_starts[idx + 1]].strip()
+        if not block:
+            continue
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+
+        pk_match = re.search(r"\b[A-Z]{2}:\d+:\d+\b", lines[0])
+        if not pk_match:
+            continue
+        bill_pk = pk_match.group(0)
+
+        confidence = "medium"
+        summary = ""
+        for line in lines[1:]:
+            conf_match = re.search(r"(?i)^confidence:\s*(high|medium|low)\s*$", line)
+            if conf_match:
+                confidence = conf_match.group(1).lower()
+                continue
+            if not summary:
+                summary = line
+
+        out.append({"billPk": bill_pk, "summary": summary, "confidence": confidence})
+    return out
+
+
+def _exclude_current_bill(
+    related: list[dict[str, Any]], current_bill_pk: str | None
+) -> list[dict[str, Any]]:
+    if not current_bill_pk:
+        return related
+    current = str(current_bill_pk).strip()
+    if not current:
+        return related
+    return [
+        item
+        for item in related
+        if str(item.get("billPk", "")).strip() != current
+    ]
 
 
 def _bill_match_params(bill_pk: str) -> dict[str, Any]:
@@ -252,6 +330,10 @@ async def get_bill_detail_neo4j(bill_pk: str) -> BillDetailResponse | None:
     sponsors = [s for s in (bill.get("sponsors") or []) if (s or {}).get("name")]
     bill["sponsors"] = sponsors
     graph_raw = _normalize_graph_props(dict(payload.get("graphRecord") or {}))
+    related = _related_bills_from_llm_json(graph_raw)
+    related = _exclude_current_bill(related, bill.get("id"))
+    if related:
+        bill["relatedBills"] = related
     return BillDetailResponse(
         bill=BillDetail.model_validate(bill),
         graphRecord=GraphBillRecord.model_validate(graph_raw),

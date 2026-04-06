@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-# format status line
+# format status line (Neo4j bill.status_desc, returned as meta["status"])
 def _status_line(m: dict) -> str:
     status_desc = m.get("status_desc") or m.get("status")
     if status_desc:

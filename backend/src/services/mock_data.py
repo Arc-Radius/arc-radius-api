@@ -153,7 +153,9 @@ MOCK_BILL_DETAILS_BY_PK: dict[str, dict[str, Any]] = {
             ],
             "subjects": ["Public health", "Education"],
             "similarBills": [],
-            "relatedBills": [{"bill_id": "TX HB2758", "summary": "Related scope", "confidence": "high"}],
+            "relatedBills": [
+                {"billPk": "TX:2160:1890827", "summary": "Related scope", "confidence": "high"}
+            ],
             "keyDates": [{"date": "2025-04-01", "description": "Committee hearing", "isPast": False}],
             "sponsorContact": {
                 "name": "Jane Doe",
