@@ -126,7 +126,9 @@ class BillDetail(BaseModel):
     id: str
     number: str
     title: str
+    description: str = ""
     summary: str
+    whyMatters: str = ""
     fullText: str
     state: str
     status: str
@@ -182,7 +184,25 @@ class GraphBillRecord(BaseModel):
 
 def sanitize_graph_record_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Sanitize graph record for API response."""
-    return dict(d)
+    def _to_json_safe(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: _to_json_safe(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_to_json_safe(v) for v in value]
+        if isinstance(value, tuple):
+            return [_to_json_safe(v) for v in value]
+
+        # Neo4j temporal values (e.g., neo4j.time.DateTime/Date/Time) expose iso_format().
+        iso_format = getattr(value, "iso_format", None)
+        if callable(iso_format):
+            try:
+                return iso_format()
+            except Exception:
+                return str(value)
+
+        return value
+
+    return _to_json_safe(dict(d))
 
 
 class BillDetailResponse(BaseModel):
