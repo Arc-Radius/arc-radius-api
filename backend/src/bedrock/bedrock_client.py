@@ -18,10 +18,12 @@ MAX_EMBED_INPUT_CHARS = 8000
 DEFAULT_TEXT_MODEL_ID = os.getenv(
     "BEDROCK_TEXT_MODEL_ID",
     "global.amazon.nova-2-lite-v1:0",
+    # "global.amazon.nova-pro-v1:0",
 )
 
 # set BEDROCK_TEXT_REQUEST_FORMAT to "nova" or "anthropic".
-BEDROCK_TEXT_REQUEST_FORMAT = os.getenv("BEDROCK_TEXT_REQUEST_FORMAT", "").strip().lower()
+BEDROCK_TEXT_REQUEST_FORMAT = os.getenv(
+    "BEDROCK_TEXT_REQUEST_FORMAT", "").strip().lower()
 DEFAULT_EMBED_MODEL_ID = os.getenv(
     "BEDROCK_EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0"
 )
@@ -137,8 +139,7 @@ def generate(
             ],
             "reasoningConfig": {
                 "type": "enabled",
-                "maxReasoningEffort": "low",
-            },
+                "maxReasoningEffort": "low", },
         }
         if system:
             body["system"] = [{"text": system}]
@@ -149,7 +150,8 @@ def generate(
             body=json.dumps(body),
         )
         result = json.loads(response["body"].read())
-        content_list = result.get("output", {}).get("message", {}).get("content", [])
+        content_list = result.get("output", {}).get(
+            "message", {}).get("content", [])
         # Nova may emit multiple text blocks (preamble + JSON, or split output). Using only
         # the first block breaks JSON-only tasks like bill_related.
         parts: list[str] = []
