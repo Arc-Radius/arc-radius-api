@@ -49,3 +49,5 @@ graph/output/
 backend/graph/output/
 
 poetry.lock
+
+neo4j.dump

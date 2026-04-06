@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 
 TASKS = ("bill_summary", "bill_why_matters", "bill_related")
-TASK_SLEEP_SECONDS = 5.0
+TASK_SLEEP_SECONDS = 0.1
 OUTPUT_FIELDS = (
     "Bill ID",
     "Output Prompt Template",

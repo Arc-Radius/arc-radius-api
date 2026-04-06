@@ -1,20 +1,16 @@
-#!/usr/bin/env python3
 """
 Apply wide CSV from 8_bulk_generate_bills.py to Neo4j :Bill nodes.
 
 Sets:
   llm_bill_summary, llm_bill_why_matters, llm_related_bills_json,
   llm_generation_errors, llm_generated_at
-
-Example:
-  cd backend && poetry run python ../graph/scripts/9_apply_llm_outputs_to_neo4j.py \\
-    --input-csv ../graph/output/bulk_llm_generation_abc123.csv
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
 from pathlib import Path
 
@@ -41,14 +37,83 @@ SET b.llm_bill_summary = row.llm_bill_summary,
 RETURN count(b) AS updated
 """
 
+_BULK_CSV_NUMERIC = re.compile(r"^bulk_llm_generation_(\d+)\.csv$")
+
+
+def _sort_bulk_csv_paths(paths: list[Path]) -> list[Path]:
+    """Numeric order for bulk_llm_generation_<n>.csv; other names sort after by name."""
+
+    def key(p: Path) -> tuple[int, int | str]:
+        m = _BULK_CSV_NUMERIC.match(p.name)
+        return (0, int(m.group(1))) if m else (1, p.name)
+
+    return sorted(paths, key=key)
+
+
+def _resolve_input_paths(args: argparse.Namespace) -> list[Path]:
+    if args.input_dir is not None:
+        d = args.input_dir.resolve()
+        if not d.is_dir():
+            raise SystemExit(f"Not a directory: {d}")
+        paths = [p for p in d.glob("bulk_llm_generation_*.csv") if p.is_file()]
+        paths = _sort_bulk_csv_paths(paths)
+        if not paths:
+            raise SystemExit(f"No bulk_llm_generation_*.csv in {d}")
+        return paths
+    # Mutually exclusive with --input-dir; nargs="+" guarantees a non-empty list.
+    return [p.resolve() for p in args.input_csv]
+
+
+def _load_rows(paths: list[Path]) -> list[dict[str, str]]:
+    required = {
+        "bill_pk",
+        "llm_bill_summary",
+        "llm_bill_why_matters",
+        "llm_related_bills_json",
+        "errors",
+    }
+    # Last wins if the same bill_pk appears in multiple files (overlapping pages).
+    by_pk: dict[str, dict[str, str]] = {}
+    for path in paths:
+        if not path.is_file():
+            raise SystemExit(f"Not found: {path}")
+        with path.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+                raise SystemExit(
+                    f"{path.name}: CSV must have columns {sorted(required)}; "
+                    f"got {reader.fieldnames}"
+                )
+            for raw in reader:
+                pk = (raw.get("bill_pk") or "").strip()
+                if not pk:
+                    continue
+                by_pk[pk] = {
+                    "bill_pk": pk,
+                    "llm_bill_summary": raw.get("llm_bill_summary") or "",
+                    "llm_bill_why_matters": raw.get("llm_bill_why_matters") or "",
+                    "llm_related_bills_json": raw.get("llm_related_bills_json")
+                    or "[]",
+                    "errors": raw.get("errors") or "",
+                }
+    return sorted(by_pk.values(), key=lambda r: r["bill_pk"])
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Apply bulk LLM CSV to Neo4j bills.")
-    parser.add_argument(
+    src = parser.add_mutually_exclusive_group(required=True)
+    src.add_argument(
         "--input-csv",
         type=Path,
-        required=True,
-        help="Wide CSV from 8_bulk_generate_bills.py",
+        nargs="+",
+        metavar="PATH",
+        help="One or more wide CSVs from 8_bulk_generate_bills.py (same columns as single run).",
+    )
+    src.add_argument(
+        "--input-dir",
+        type=Path,
+        metavar="DIR",
+        help="Directory containing bulk_llm_generation_<n>.csv files (applied in numeric order).",
     )
     parser.add_argument(
         "--batch-size",
@@ -57,37 +122,9 @@ def main() -> None:
         help="Rows per UNWIND batch.",
     )
     args = parser.parse_args()
-    path = args.input_csv.resolve()
-    if not path.is_file():
-        raise SystemExit(f"Not found: {path}")
-
-    rows: list[dict[str, str]] = []
-    with path.open(newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        required = {
-            "bill_pk",
-            "llm_bill_summary",
-            "llm_bill_why_matters",
-            "llm_related_bills_json",
-            "errors",
-        }
-        if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
-            raise SystemExit(
-                f"CSV must have columns {sorted(required)}; got {reader.fieldnames}"
-            )
-        for raw in reader:
-            rows.append(
-                {
-                    "bill_pk": (raw.get("bill_pk") or "").strip(),
-                    "llm_bill_summary": raw.get("llm_bill_summary") or "",
-                    "llm_bill_why_matters": raw.get("llm_bill_why_matters") or "",
-                    "llm_related_bills_json": raw.get("llm_related_bills_json")
-                    or "[]",
-                    "errors": raw.get("errors") or "",
-                }
-            )
-
-    rows = [r for r in rows if r["bill_pk"]]
+    paths = _resolve_input_paths(args)
+    print(f"[INFO] Input files ({len(paths)}): " + ", ".join(p.name for p in paths))
+    rows = _load_rows(paths)
     if not rows:
         raise SystemExit("No data rows with bill_pk")
 

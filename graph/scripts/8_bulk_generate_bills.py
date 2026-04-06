@@ -1,20 +1,14 @@
-#!/usr/bin/env python3
 """
 List every :Bill bill_pk from Neo4j, run bill_summary / bill_why_matters / bill_related
 via the same pipeline as POST /generate/bill, write one wide CSV row per bill.
-
-Requires backend env (NEO4J_URI, AWS/Bedrock for generate). Run from repo root, e.g.:
-  cd backend && poetry run python ../graph/scripts/8_bulk_generate_bills.py --max-bills 2
-
-Do not run in CI without credentials; this script is intentionally offline-capable only
-when Neo4j + Bedrock are configured.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import secrets
+import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -46,19 +40,40 @@ OUTPUT_FIELDS = (
     "llm_bill_summary",
     "llm_bill_why_matters",
     "llm_related_bills_json",
+    "output_sources",
     "errors",
 )
+
+
+def build_output_sources(
+    sources: list[dict],
+    anchor_context: str | None = None,
+) -> dict:
+    return {
+        "anchor_context": anchor_context,
+        "sources": sources,
+    }
 
 
 def _graph_output_dir() -> Path:
     return _REPO_ROOT / "graph" / "output"
 
 
-def load_bill_pks(
-    *,
-    max_bills: int | None,
-    start_after: str | None,
-) -> list[str]:
+_BULK_CSV_NUMERIC = re.compile(r"^bulk_llm_generation_(\d+)\.csv$")
+
+
+def _next_bulk_csv_path(output_dir: Path) -> Path:
+    """bulk_llm_generation_1.csv, _2.csv, ... skipping unrelated filenames."""
+    max_n = 0
+    if output_dir.is_dir():
+        for p in output_dir.glob("bulk_llm_generation_*.csv"):
+            m = _BULK_CSV_NUMERIC.match(p.name)
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+    return output_dir / f"bulk_llm_generation_{max_n + 1}.csv"
+
+
+def load_all_bill_pks(*, start_after: str | None) -> list[str]:
     db = Neo4j()
     try:
         rows = db.run(LIST_BILL_PKS_CYPHER)
@@ -67,6 +82,18 @@ def load_bill_pks(
     pks = [str(r["bill_pk"]).strip() for r in rows if r.get("bill_pk")]
     if start_after:
         pks = [p for p in pks if p > start_after]
+    return pks
+
+
+def slice_bill_pks(
+    pks: list[str],
+    *,
+    offset: int,
+    max_bills: int | None,
+) -> list[str]:
+    if offset < 0:
+        raise ValueError("offset must be >= 0")
+    pks = pks[offset:]
     if max_bills is not None:
         pks = pks[: max_bills]
     return pks
@@ -78,7 +105,11 @@ def run_one_bill(bill_pk: str, *, sleep_s: float) -> dict[str, str]:
         "llm_bill_summary": "",
         "llm_bill_why_matters": "",
         "llm_related_bills_json": "[]",
+        "output_sources": "",
         "errors": "",
+    }
+    sources_by_task: dict[str, dict] = {
+        t: build_output_sources([], None) for t in BULK_TASKS
     }
     errs: list[str] = []
     for i, task in enumerate(BULK_TASKS):
@@ -86,19 +117,19 @@ def run_one_bill(bill_pk: str, *, sleep_s: float) -> dict[str, str]:
             time.sleep(sleep_s)
         try:
             out = query_and_generate_task(task, bill_pk)
+            sources_by_task[task] = build_output_sources(
+                out.get("sources") or [],
+                out.get("anchor_context"),
+            )
             if task == "bill_summary":
                 row["llm_bill_summary"] = (out.get("answer") or "").strip()
             elif task == "bill_why_matters":
                 row["llm_bill_why_matters"] = (out.get("answer") or "").strip()
             else:
-                row["llm_related_bills_json"] = (
-                    out.get("related_bills_json") or "[]"
-                ).strip()
-                pe = out.get("related_bills_parse_error")
-                if pe:
-                    errs.append(f"bill_related_parse:{pe}")
+                row["llm_related_bills_json"] = (out.get("answer") or "").strip()
         except Exception as exc:
             errs.append(f"{task}:{exc!s}")
+    row["output_sources"] = json.dumps(sources_by_task)
     row["errors"] = "; ".join(errs)
     return row
 
@@ -111,13 +142,35 @@ def main() -> None:
         "--out-csv",
         type=Path,
         default=None,
-        help="Default: graph/output/bulk_llm_generation_<random>.csv",
+        help="Default: graph/output/bulk_llm_generation_<n>.csv (next integer).",
     )
     parser.add_argument(
         "--max-bills",
         type=int,
         default=None,
-        help="Limit bills (smoke test).",
+        help="Max bills in this run after --offset (batch size / smoke test).",
+    )
+    parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="Skip this many bills (ordered bill_pk) after --start-after. For 100-bill "
+        "batches: 0, 100, 200, …",
+    )
+    parser.add_argument(
+        "--page",
+        type=int,
+        default=None,
+        metavar="N",
+        help="1-based page index; sets --offset to (N-1)*--page-size. Mutually exclusive "
+        "with --offset.",
+    )
+    parser.add_argument(
+        "--page-size",
+        type=int,
+        default=100,
+        metavar="K",
+        help="Bills per page when using --page (default: 100).",
     )
     parser.add_argument(
         "--start-after",
@@ -137,16 +190,36 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    pks = load_bill_pks(max_bills=args.max_bills, start_after=args.start_after)
-    print(f"[INFO] Bills to process: {len(pks)}")
+    if args.page is not None and args.offset != 0:
+        parser.error("Use either --page or --offset, not both")
+    if args.page is not None and args.page < 1:
+        parser.error("--page must be >= 1")
+    offset = args.offset
+    if args.page is not None:
+        offset = (args.page - 1) * args.page_size
+    max_bills = args.max_bills
+    if args.page is not None and max_bills is None:
+        max_bills = args.page_size
+
+    all_pks = load_all_bill_pks(start_after=args.start_after)
+    total_after_filter = len(all_pks)
+    pks = slice_bill_pks(all_pks, offset=offset, max_bills=max_bills)
+
+    print(
+        f"[INFO] Bills in scope (after --start-after): {total_after_filter}; "
+        f"this run: offset={offset}"
+        + (f", limit={max_bills}" if max_bills is not None else "")
+        + f" → {len(pks)} bills",
+    )
     if args.dry_run:
         print("[DRY-RUN] First PKs:", pks[:5])
+        if pks:
+            print("[DRY-RUN] Last PK:", pks[-1])
         return
 
     out_path = args.out_csv
     if out_path is None:
-        rid = secrets.token_hex(4)
-        out_path = _graph_output_dir() / f"bulk_llm_generation_{rid}.csv"
+        out_path = _next_bulk_csv_path(_graph_output_dir())
     out_path = out_path.resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
