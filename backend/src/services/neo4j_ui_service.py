@@ -163,6 +163,21 @@ def _related_bills_from_llm_json(graph_raw: dict[str, Any]) -> list[dict[str, An
     return out
 
 
+def _exclude_current_bill(
+    related: list[dict[str, Any]], current_bill_pk: str | None
+) -> list[dict[str, Any]]:
+    if not current_bill_pk:
+        return related
+    current = str(current_bill_pk).strip()
+    if not current:
+        return related
+    return [
+        item
+        for item in related
+        if str(item.get("billPk", "")).strip() != current
+    ]
+
+
 def _bill_match_params(bill_pk: str) -> dict[str, Any]:
     return {"billPk": bill_pk, "numericOnly": _numeric_route_key(bill_pk)}
 
@@ -316,6 +331,7 @@ async def get_bill_detail_neo4j(bill_pk: str) -> BillDetailResponse | None:
     bill["sponsors"] = sponsors
     graph_raw = _normalize_graph_props(dict(payload.get("graphRecord") or {}))
     related = _related_bills_from_llm_json(graph_raw)
+    related = _exclude_current_bill(related, bill.get("id"))
     if related:
         bill["relatedBills"] = related
     return BillDetailResponse(
