@@ -1,4 +1,7 @@
+import logging
 from contextlib import asynccontextmanager
+
+logging.getLogger("neo4j").setLevel(logging.ERROR)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
