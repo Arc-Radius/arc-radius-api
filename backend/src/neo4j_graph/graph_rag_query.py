@@ -272,6 +272,40 @@ def _rerank_with_state_hints(
     return reranked
 
 
+STATE_FILTERED_CHUNKS_CYPHER = """
+MATCH (b:Bill)-[:HAS_DOCUMENT]->(d:Document)-[:HAS_CHUNK]->(c:Chunk)
+WHERE b.state IN $states AND c.embedding IS NOT NULL
+WITH c, vector.similarity.cosine(c.embedding, $query_embedding) AS score
+ORDER BY score DESC
+LIMIT $top_k
+RETURN c AS node, score
+"""
+
+
+def _run_state_filtered_retrieval(
+    db: Neo4j, query: str, states: set[str], top: int
+) -> list[dict]:
+    query_embedding = BedrockEmbedder().embed_query(query)
+    rows = db.run(
+        STATE_FILTERED_CHUNKS_CYPHER,
+        states=list(states),
+        query_embedding=query_embedding,
+        top_k=max(top * 2, 20),
+    )
+    ranked: list[dict] = []
+    for row in rows:
+        node = row.get("node", {})
+        chunk_id = node.get("chunk_id")
+        if not chunk_id:
+            continue
+        ranked.append({
+            "chunk_id": chunk_id,
+            "text": node.get("text", ""),
+            "score": float(row.get("score", 0.0)),
+        })
+    return ranked
+
+
 def graph_rag_query(
     query: str, *, top: int = 10, db: Neo4j | None = None
 ) -> tuple[list[dict], dict[str, dict], str]:
@@ -280,7 +314,17 @@ def graph_rag_query(
         db = Neo4j()
 
     try:
-        ranked = _search_ranked(db, query, top)
+        state_hints = _extract_query_state_hints(query)
+
+        # If user mentions specific states, do state-filtered retrieval first
+        if state_hints:
+            ranked = _run_state_filtered_retrieval(db, query, state_hints, top)
+            # Fall back to unfiltered if state filter returns too few results
+            if len(ranked) < 3:
+                ranked = _search_ranked(db, query, top * 2)
+        else:
+            ranked = _search_ranked(db, query, top)
+
         chunk_ids = [r["chunk_id"] for r in ranked]
         if not chunk_ids:
             return ranked[:top], {}, ""
