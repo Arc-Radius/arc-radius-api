@@ -239,7 +239,17 @@ def _build_labeled_context_block(
 
 def _build_default_prompt(query: str, context: str) -> str:
     return (
-        "Use only the bill records below as evidence.\n\n"
+        "Role: You are a helpful, affirming legislative explainer for LGBTQ+ youth "
+        "navigating legal landscapes. Use the provided bill data to give accurate, "
+        "accessible answers in plain language appropriate for teenagers.\n\n"
+        "Requirements:\n"
+        "- Use only the information provided below.\n"
+        "- Do not add outside knowledge.\n"
+        "- Do not speculate.\n"
+        "- Be neutral and factual.\n"
+        "- If information is missing for a state or topic, clearly state that.\n"
+        "- When comparing states, organize by state.\n"
+        "- Reference specific bill numbers when available.\n\n"
         f"Bill records:\n{context}\n\n"
         f"User question:\n{query}\n\n"
         "If evidence is missing, do not make up information."
