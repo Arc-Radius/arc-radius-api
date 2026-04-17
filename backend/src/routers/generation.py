@@ -15,6 +15,10 @@ class LetterParams(BaseModel):
     medium: Literal["email", "phone"] = "email"
     stance: Literal["support", "oppose"] = "support"
     tone: Literal["formal", "conversational"] = "conversational"
+    representative_name: str | None = Field(
+        default=None,
+        description="Representative name from zipcode lookup — injected into the letter greeting.",
+    )
 
 
 class BillGenerationRequest(BaseModel):

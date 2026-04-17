@@ -55,6 +55,11 @@ class Settings:
         return bool(self.neo4j_uri and self.neo4j_user)
 
     @property
+    def openstates_api_key(self) -> str | None:
+        raw = os.getenv("OPENSTATES_API_KEY")
+        return raw.strip() if raw and raw.strip() else None
+
+    @property
     def rag_and_generation_enabled(self) -> bool:
         """
         When false, GET /bills/rag returns 404 and the /generate router is not mounted.
