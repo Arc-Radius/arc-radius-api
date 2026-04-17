@@ -147,7 +147,7 @@ Formatting rules:
 
 If Email:
 - include subject line
-- include greeting with "Dear [Representative/Senator name if available]"
+- include greeting with "Dear {representative_greeting}"
 - 2-3 paragraphs: introduce yourself and position, explain why using bill details, make a clear request
 - include a respectful closing with signature placeholder [Your Name]
 
@@ -292,11 +292,14 @@ def _build_task_prompt_template(task: str, query: str) -> str:
 
 
 def _resolve_letter_prompt(params: dict) -> str:
+    rep_name = params.get("representative_name")
+    greeting = rep_name if rep_name else "[Representative/Senator Name]"
     return (
         TASK_PROMPTS["generate_letter"]
         .replace("{email_or_phone}", params.get("medium", "email"))
         .replace("{support_or_oppose}", params.get("stance", "support"))
         .replace("{tone}", params.get("tone", "conversational"))
+        .replace("{representative_greeting}", greeting)
     )
 
 

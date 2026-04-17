@@ -8,8 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from src.core.settings import settings
 from src.db.neo4j_client import close_async_driver, get_async_driver
+from src.routers.analytics import router as analytics_router
 from src.routers.bills import router as bills_router
 from src.routers.generation import router as generation_router
+from src.routers.representatives import router as representatives_router
 from src.routers.states import router as states_router
 
 
@@ -35,9 +37,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(analytics_router)
 app.include_router(bills_router)
 if settings.rag_and_generation_enabled:
     app.include_router(generation_router)
+app.include_router(representatives_router)
 app.include_router(states_router)
 
 
